@@ -1,0 +1,3317 @@
+
+AVRASM ver. 1.56  \\files1\data\moghadda\My Documents\microcontroleurs\projet_micro\Projet_final\fichier_principal.asm Tue May 28 22:55:29 2013
+
+
+warning : Register already defined by the .DEF directive
+warning : Register already defined by the .DEF directive
+warning : Register already defined by the .DEF directive
+warning : Register already defined by the .DEF directive
+\\files1\data\moghadda\My Documents\microcontroleurs\projet_micro\Projet_final\fichier_principal.asm(28): warning: A .db segment with an odd number of bytes is detected. A zero byte is added.
+\\files1\data\moghadda\My Documents\microcontroleurs\projet_micro\Projet_final\fichier_principal.asm(51): warning: A .db segment with an odd number of bytes is detected. A zero byte is added.
+\\files1\data\moghadda\My Documents\microcontroleurs\projet_micro\Projet_final\fichier_principal.asm(73): warning: A .db segment with an odd number of bytes is detected. A zero byte is added.
+\\files1\data\moghadda\My Documents\microcontroleurs\projet_micro\Projet_final\fichier_principal.asm(96): warning: A .db segment with an odd number of bytes is detected. A zero byte is added.
+\\files1\data\moghadda\My Documents\microcontroleurs\projet_micro\Projet_final\fichier_principal.asm(15): warning: A .db segment with an odd number of bytes is detected. A zero byte is added.
+\\files1\data\moghadda\My Documents\microcontroleurs\projet_micro\Projet_final\fichier_principal.asm(47): warning: A .db segment with an odd number of bytes is detected. A zero byte is added.
+          .include "m103def.inc"
+          .nolist
+          .include "macros.asm"
+         ; file:	macros.asm
+         ; copyright (c) 2000-2002 R.Holzer
+         ; 2002-01-09
+         ; Modified:04/03/06,AS; EORB
+         
+         ; ==============
+         ; 	pointers
+         ; ==============
+         
+         ; --- loading an immediate into a pointer XYZ,SP ---
+          .macro 	LDIX	; sram
+          	ldi	xl, low(@0)
+          	ldi	xh,high(@0)
+          	.endmacro	
+          .macro 	LDIY	; sram	
+          	ldi	yl, low(@0)
+          	ldi	yh,high(@0)
+          	.endmacro	
+          .macro 	LDIZ	; sram
+          	ldi	zl, low(@0)
+          	ldi	zh,high(@0)
+         	
+          	.endmacro
+          .macro	LDZD	; sram, reg	; sram+reg -> Z
+          	mov	zl,@1
+          	clr	zh
+          	subi	zl, low(-@0)
+          	sbci	zh,high(-@0)
+          	.endmacro
+          .macro	LDSP	; sram
+          	ldi	r16, low(@0)
+          	out	spl,r16
+          	ldi	r16,high(@0)
+          	out	sph,r16
+          	.endmacro
+         
+         ; --- load/store SRAM addr into pointer XYZ ---	
+          .macro 	LDSX	; sram
+          	lds	xl,@0
+          	lds	xh,@0+1
+          	.endmacro
+          .macro 	LDSY	; sram
+          	lds	yl,@0
+          	lds	yh,@0+1
+          	.endmacro
+          .macro 	LDSZ	; sram
+          	lds	zl,@0
+          	lds	zh,@0+1
+          	.endmacro
+          .macro 	STSX	; sram
+          	sts	@0,  xl
+          	sts	@0+1,xh
+          	.endmacro	
+          .macro 	STSY	; sram
+          	sts	@0,  yl
+          	sts	@0+1,yh
+          	.endmacro
+          .macro 	STSZ	; sram
+          	sts	@0,  zl
+          	sts	@0+1,zh
+          	.endmacro	
+         
+         ; --- push/pop pointer XYZ ---
+          .macro	PUSHX			; push X
+          	push	xl
+          	push	xh
+          	.endmacro
+          .macro	POPX			; pop X
+          	pop	xh
+          	pop	xl
+          	.endmacro
+         	
+          .macro	PUSHY			; push Y
+          	push	yl
+          	push	yh
+          	.endmacro
+          .macro	POPY			; pop Y
+          	pop	yh
+          	pop	yl
+          	.endmacro
+         
+          .macro	PUSHZ			; push Z
+          	push	zl
+          	push	zh
+          	.endmacro
+          .macro	POPZ			; pop Z
+          	pop	zh
+          	pop	zl
+          	.endmacro
+         
+         ; --- multiply/divide Z ---	
+          .macro	MUL2Z			; multiply Z by 2
+          	lsl	zl
+          	rol	zh
+          	.endmacro
+          .macro	DIV2Z			; divide Z by 2
+          	lsr	zh
+          	ror	zl
+          	.endmacro
+         
+         ; --- add register to pointer XYZ ---	
+          .macro	ADDX	;reg		; x <- y+reg
+          	add	xl,@0
+          	brcc	PC+2
+          	subi	xh,-1		; add carry
+          	.endmacro
+          .macro	ADDY	;reg		; y <- y+reg
+          	add	yl,@0
+          	brcc	PC+2
+          	subi	yh,-1		; add carry
+          	.endmacro
+          .macro	ADDZ	;reg		; z <- z+reg
+          	add	zl,@0
+          	brcc	PC+2
+          	subi	zh,-1		; add carry
+          	.endmacro
+         
+         ; ===================
+         ; 	miscellaneous
+         ; ===================
+         
+         ; --- output/store immediate value ---
+          .macro	OUTI	; port,k	output immediate value to port
+          	ldi	w,@1
+          	out	@0,w
+          	.endmacro
+         
+         ; --- add immediate value ---
+          .macro	ADDI
+          	subi	@0,-@1
+          	.endmacro
+          .macro	ADCI
+          	sbci	@0,-@1
+          	.endmacro
+         
+         ; --- inc/dec with range limitation ---
+          .macro	INC_LIM	; reg,limit
+          	cpi	@0,@1
+          	brlo	PC+3
+          	ldi	@0,@1	
+          	rjmp	PC+2
+          	inc	@0
+          	.endmacro
+         
+          .macro	DEC_LIM	; reg,limit
+          	cpi	@0,@1
+          	breq	PC+5
+          	brlo	PC+3
+          	dec	@0
+          	rjmp	PC+2
+          	ldi	@0,@1
+          	.endmacro
+         
+         ; --- inc/dec with cyclic range ---
+          .macro	INC_CYC	; reg,low,high
+          	cpi	@0,@2
+          	brsh	_low	; reg>=high then reg=low
+          	cpi	@0,@1
+          	brlo	_low	; reg< low  then reg=low
+          	inc	@0
+          	rjmp	_done
+          _low:	ldi	@0,@1
+          _done:	.endmacro
+         	
+          .macro	DEC_CYC	; reg,low,high
+          	cpi	@0,@1
+          	breq	_high	; reg=low then reg=high
+          	brlo	_high	; reg<low then reg=high
+          	dec	@0	
+          	cpi	@0,@2
+          	brsh	_high	; reg>=high then high
+          	rjmp	_done
+          _high:	ldi	@0,@2
+          _done:	.endmacro
+         
+          .macro	INCDEC	port,b1,b2,reg,low,high
+          	sbic	@0,@1
+          	rjmp	PC+6
+         
+          	cpi	@3,@5
+          	brlo	PC+3
+          	ldi	@3,@4	
+          	rjmp	PC+2
+          	inc	@3
+         
+          	sbic	@0,@2
+          	rjmp	PC+7
+         	
+          	cpi	@3,@4
+          	breq	PC+5
+          	brlo	PC+3
+          	dec	@3
+          	rjmp	PC+2
+          	ldi	@3,@5
+          	.endmacro		
+         
+         ; --- wait loops ---
+         ; wait 10...196608 cycles
+          .macro	WAIT_C	; k
+          	ldi	w,  low((@0-7)/3)
+          	mov	u,w			; u=LSB
+          	ldi	w,high((@0-7)/3)+1	; w=MSB
+          	dec	u
+          	brne	PC-1
+          	dec	u
+          	dec	w
+          	brne	PC-4
+          	.endmacro
+         
+         ; wait micro-seconds (us)
+         ; us = x*3*1000'000/clock)	==> x=us*clock/3000'000
+          .macro	WAIT_US ; k
+          	ldi	w, low((clock/1000*@0/3000)-1)
+          	mov	u,w
+          	ldi	w,high((clock/1000*@0/3000)-1)+1 ; set up: 3 cyles
+          	dec	u
+          	brne	PC-1		; inner loop: 3 cycles
+          	dec	u		; adjustment for outer loop
+          	dec	w
+          	brne	PC-4
+          	.endmacro
+         
+         ; wait mili-seconds (ms)
+          .macro	WAIT_MS ; k
+          	ldi	w, low(@0)
+          	mov	u,w		; u = LSB	
+          	ldi	w,high(@0)+1	; w = MSB
+          wait_ms:
+          	push	w		; wait 1000 usec
+          	push	u
+          	ldi	w, low((clock/3000)-5)	
+          	mov	u,w
+          	ldi	w,high((clock/3000)-5)+1
+          	dec	u
+          	brne	PC-1		; inner loop: 3 cycles
+          	dec	u		; adjustment for outer loop
+          	dec	w
+          	brne	PC-4
+          	pop	u
+          	pop	w
+         	
+          	dec	u
+          	brne	wait_ms
+          	dec	w
+          	brne	wait_ms
+          	.endmacro
+         
+         ; --- conditional jumps/calls ---
+          .macro	JC0			; jump if carry=0
+          	brcs	PC+2	
+          	rjmp	@0
+          	.endmacro
+          .macro	JC1			; jump if carry=1
+          	brcc	PC+2	
+          	rjmp	@0
+          	.endmacro
+         
+          .macro	JK	; reg,k,addr	; jump if reg=k
+          	cpi	@0,@1
+          	breq	@2
+          	.endmacro
+          .macro	_JK	; reg,k,addr	; jump if reg=k
+          	cpi	@0,@1
+          	brne	PC+2
+          	rjmp	@2
+          	.endmacro	
+          .macro	JNK	; reg,k,addr	; jump if not(reg=k)
+          	cpi	@0,@1
+          	brne	@2
+          	.endmacro 
+         
+          .macro	CK	; reg,k,addr	; call if reg=k
+          	cpi	@0,@1
+          	brne	PC+2
+          	rcall	@2
+          	.endmacro
+          .macro	CNK	; reg,k,addr	; call if not(reg=k)
+          	cpi	@0,@1
+          	breq	PC+2
+          	rcall	@2
+          	.endmacro 
+         
+          .macro	JSK	; sram,k,addr	; jump if sram=k
+          	lds	w,@0
+          	cpi	w,@1
+          	breq	@2
+          	.endmacro 
+          .macro	JSNK	; sram,k,addr	; jump if not(sram=k)
+          	lds	w,@0
+          	cpi	w,@1
+          	brne	@2
+          	.endmacro
+         
+         ; --- loops ---
+          .macro	DJNZ	; reg,addr	; decr and jump if not zero
+          	dec	@0
+          	brne	@1
+          	.endmacro
+          .macro	DJNK	; reg,k,addr	; decr and jump if not k
+          	dec	@0
+          	cpi	@0,@1
+          	brne	@2
+          	.endmacro
+         
+          .macro	IJNZ	; reg,addr	; inc and jump if not zero
+          	inc	@0
+          	brne	@1
+          	.endmacro
+          .macro	IJNK	; reg,k,addr	; inc and jump if not k
+          	inc	@0
+          	cpi	@0,@1
+          	brne	@2
+          	.endmacro
+          .macro	_IJNK	; reg,k,addr	; inc and jump if not k
+          	inc	@0
+          	ldi	w,@1
+          	cp	@0,w
+          	brne	@2
+          	.endmacro
+         
+          .macro	ISJNK	; sram,k,addr	; inc sram and jump if not k
+          	lds	w,@0
+          	inc	w
+          	sts	@0,w
+          	cpi	w,@1
+          	brne	@2
+          	.endmacro
+          .macro	_ISJNK	; sram,k,addr	; inc sram and jump if not k
+          	lds	w,@0
+          	inc	w
+          	sts	@0,w
+          	cpi	w,@1
+          	breq	PC+2	
+          	rjmp	@2
+          	.endmacro
+         
+          .macro	DSJNK	; sram,k,addr	; dec sram and jump if not k
+          	lds	w,@0
+          	dec	w
+          	sts	@0,w
+          	cpi	w,@1
+          	brne	@2
+          	.endmacro
+         
+         ; --- table lookup ---
+          .macro	LOOKUP	;reg, index,tbl
+          	push	ZL
+          	push	ZH
+          	mov	zl,@1		; move index into z
+          	clr	zh
+          	subi	zl, low(-2*@2)	; add base address of table
+          	sbci	zh,high(-2*@2)	
+          	lpm			; load program memory (into r0)
+          	mov	@0,r0
+          	pop	ZH
+          	pop	ZL
+          	.endmacro
+         
+          .macro	LOOKUP2	;r1,r0, index,tbl
+          	mov	zl,@2		; move index into z
+          	clr	zh
+          	lsl	zl		; multiply by 2
+          	rol	zh
+          	subi	zl, low(-2*@3)	; add base address of table
+          	sbci	zh,high(-2*@3)
+          	lpm			; get LSB byte
+          	mov	w,r0		; temporary store LSB in w
+          	adiw	zl,1		; increment Z
+          	lpm			; get MSB byte
+          	mov	@0,r0		; mov MSB to res1
+          	mov	@1,w		; mov LSB to res0
+          	.endmacro
+         
+          .macro	LOOKUP4	;r3,r2,r1,r0, index,tbl
+          	mov	zl,@4		; move index into z
+          	clr	zh
+          	lsl	zl		; multiply by 2
+          	rol	zh
+          	lsl	zl		; multiply by 2
+          	rol	zh	
+          	subi	zl, low(-2*@5)	; add base address of table
+          	sbci	zh,high(-2*@5)
+          	lpm
+          	mov	@1,r0		; load high word LSB
+          	adiw	zl,1
+          	lpm
+          	mov	@0,r0		; load high word MSB
+          	adiw	zl,1
+          	lpm
+          	mov	@3,r0		; load low word LSB		
+          	adiw	zl,1
+          	lpm
+          	mov	@2,r0		; load low word MSB
+          	.endmacro
+         
+          .macro	LOOKDOWN ;reg,index,tbl
+          	ldi	ZL, low(2*@2)	; load table address
+          	ldi	ZH,high(2*@2)
+          	clr	@1
+          loop:	lpm
+          	cp	r0,@0
+          	breq	found
+          	inc	@1
+          	adiw	ZL,1
+          	tst	r0
+          	breq	notfound
+          	rjmp	loop
+          notfound:
+          	ldi	@1,-1
+          found:	
+          	.endmacro
+         
+         ; --- branch table ---
+          .macro	C_TBL	; reg,tbl
+          	ldi	ZL, low(2*@1)
+          	ldi	ZH,high(2*@1)
+          	lsl	@0
+          	add	ZL,@0
+          	brcc	PC+2
+          	inc	ZH
+          	lpm
+          	push	r0
+          	lpm
+          	mov	zh,r0
+          	pop	zl
+          	icall
+          	.endmacro
+          .macro	J_TBL	; reg,tbl	
+          	ldi	ZL, low(2*@1)
+          	ldi	ZH,high(2*@1)
+          	lsl	@0
+          	add	ZL,@0
+          	brcc	PC+2
+          	inc	ZH
+          	lpm
+          	push	r0
+          	lpm
+          	mov	zh,r0
+          	pop	zl	
+          	ijmp
+          	.endmacro
+         
+          .macro	BRANCH	; reg		; branching using the stack
+          	ldi	w, low(tbl)
+          	add	w,@0
+          	push	w
+          	ldi	w,high(tbl)
+          	brcc	PC+2
+          	inc	w
+          	push	w
+          	ret
+          tbl:
+          	.endmacro	
+         
+         ; --- multiply/division ---
+          .macro	DIV2	; reg
+          	lsr	@0
+          	.endmacro
+          .macro	DIV4	; reg
+          	lsr	@0
+          	lsr	@0
+          	.endmacro	
+          .macro	DIV8	; reg
+          	lsr	@0
+          	lsr	@0
+          	lsr	@0
+          	.endmacro
+         	
+          .macro	MUL2	; reg
+          	lsl	@0
+          	.endmacro
+          .macro	MUL4	; reg
+          	lsl	@0
+          	lsl	@0
+          	.endmacro
+          .macro	MUL8	; reg
+          	lsl	@0
+          	lsl	@0
+          	lsl	@0
+          	.endmacro
+         
+         ; ====================================
+         ; 	extending existing instructios
+         ; ====================================
+         
+         ; --- immediate ops with r0..r15 ---
+          .macro	_ADDI
+          	ldi	w,@1
+          	add	@0,w
+          	.endmacro
+          .macro	_ADCI
+          	ldi	w,@1
+          	adc	@0,w
+          	.endmacro
+          .macro	_SUBI
+          	ldi	w,@1
+          	sub	@0,w
+          	.endmacro
+          .macro	_SBCI
+          	ldi	w,@1
+          	sbc	@0,w
+          	.endmacro
+          .macro	_ANDI
+          	ldi	w,@1
+          	and	@0,w
+          	.endmacro
+          .macro	_ORI
+          	ldi	w,@1
+          	or	@0,w
+          	.endmacro
+          .macro	_EORI
+          	ldi	w,@1
+          	eor	@0,w
+          	.endmacro
+          .macro	_SBR
+          	ldi	w,@1
+          	or	@0,w
+          	.endmacro
+          .macro	_CBR
+          	ldi	w,~@1
+          	and	@0,w
+          	.endmacro
+          .macro	_CPI
+          	ldi	w,@1
+          	cp	@0,w
+          	.endmacro
+          .macro	_LDI
+          	ldi	w,@1
+          	mov	@0,w
+          	.endmacro
+         
+         ; --- bit access for port p32..p63 ---
+          .macro	_SBI
+          	in	w,@0
+          	ori	w,1<<@1
+          	out	@0,w
+          	.endmacro
+          .macro	_CBI
+          	in	w,@0
+          	andi	w,~(1<<@1)
+          	out	@0,w
+          	.endmacro
+         	
+         ; --- extending branch distance to +/-2k ---
+          .macro	_BREQ
+          	brne	PC+2
+          	rjmp	@0
+          	.endmacro
+          .macro	_BRNE
+          	breq	PC+2
+          	rjmp	@0
+          	.endmacro
+          .macro	_BRCS
+          	brcc	PC+2
+          	rjmp	@0
+          	.endmacro
+          .macro	_BRCC
+          	brcs	PC+2
+          	rjmp	@0
+          	.endmacro
+          .macro	_BRSH
+          	brlo	PC+2
+          	rjmp	@0
+          	.endmacro
+          .macro	_BRLO
+          	brsh	PC+2
+          	rjmp	@0
+          	.endmacro
+          .macro	_BRMI
+          	brpl	PC+2
+          	rjmp	@0
+          	.endmacro
+          .macro	_BRPL
+          	brmi	PC+2
+          	rjmp	@0
+          	.endmacro
+          .macro	_BRGE
+          	brlt	PC+2
+          	rjmp	@0
+          	.endmacro
+          .macro	_BRLT
+          	brge	PC+2
+          	rjmp	@0
+          	.endmacro
+          .macro	_BRHS
+          	brhc	PC+2
+          	rjmp	@0
+          	.endmacro
+          .macro	_BRHC
+          	brhs	PC+2
+          	rjmp	@0
+          	.endmacro
+          .macro	_BRTS
+          	brtc	PC+2
+          	rjmp	@0
+          	.endmacro
+          .macro	_BRTC
+          	brts	PC+2
+          	rjmp	@0
+          	.endmacro
+          .macro	_BRVS
+          	brvc	PC+2
+          	rjmp	@0
+          	.endmacro
+          .macro	_BRVC
+          	brvs	PC+2
+          	rjmp	@0
+          	.endmacro
+          .macro	_BRIE
+          	brid	PC+2
+          	rjmp	@0
+          	.endmacro
+          .macro	_BRID
+          	brie	PC+2
+          	rjmp	@0
+          	.endmacro
+         
+         ; ====================
+         ; 	bit operations
+         ; ====================
+         
+         ; --- moving bits ---
+          .macro	MOVB	; reg1,b1, reg2,b2	; reg1,bit1 <- reg2,bit2
+          	bst	@2,@3
+          	bld	@0,@1
+          	.endmacro
+          .macro	OUTB	; port1,b1, reg2,b2	; port1,bit1 <- reg2,bit2
+          	sbrs	@2,@3
+          	cbi	@0,@1
+          	sbrc	@2,@3
+          	sbi	@0,@1
+          	.endmacro
+          .macro	INB	; reg1,b1, port2,b2	; reg1,bit1 <- port2,bit2
+          	sbis	@2,@3
+          	cbr	@0,1<<@1
+          	sbic	@2,@3
+          	sbr	@0,1<<@1
+          	.endmacro
+         
+          .macro	Z2C				; zero to carry
+          	sec
+          	breq	PC+2	; (Z=1)
+          	clc
+          	.endmacro
+          .macro	Z2INVC				; zero to inverse carry
+          	sec
+          	brne	PC+2	; (Z=0)
+          	clc
+          	.endmacro
+         
+          .macro	C2Z				; carry to zero
+          	sez
+          	brcs	PC+2	; (C=1)
+          	clz
+          	.endmacro
+         
+          .macro	B2C	; reg,b			; bit to carry
+          	sbrc	@0,@1
+          	sec
+          	sbrs	@0,@1
+          	clc
+          	.endmacro
+          .macro	C2B	; reg,b			; carry to bit
+          	brcc	PC+2
+          	sbr	@0,(1<<@1)
+          	brcs	PC+2
+          	cbr	@0,(1<<@1)
+          	.endmacro
+          .macro	P2C	; port,b		; port to carry
+          	sbic	@0,@1
+          	sec
+          	sbis	@0,@1
+          	clc
+          	.endmacro
+          .macro	C2P	; port,b		; carry to port
+          	brcc	PC+2
+          	sbi	@0,@1
+          	brcs	PC+2
+          	cbi	@0,@1
+          	.endmacro
+         
+         ; --- inverting bits ---
+          .macro	INVB	; reg,bit		; inverse reg,bit
+          	ldi	w,(1<<@1)
+          	eor	@0,w
+          	.endmacro
+          .macro	INVP	; port,bit		; inverse port,bit	
+          	sbis	@0,@1
+          	rjmp	PC+3
+          	cbi	@0,@1
+          	rjmp	PC+2
+          	sbi	@0,@1
+          	.endmacro
+          .macro	INVC				; inverse carry	
+          	brcs	PC+3
+          	sec
+          	rjmp	PC+2
+          	clc
+          	.endmacro
+         
+         ; --- setting a single bit ---
+          .macro	SETBIT	; reg(0..7)
+         ; in	reg (0..7)
+         ; out	reg with bit (0..7) set to 1.
+         ; 0=00000001
+         ; 1=00000010
+         ; ...
+         ; 7=10000000
+          	mov	w,@0
+          	clr	@0
+          	inc	@0
+          	andi	w,0b111	
+          	breq	PC+4
+          	lsl	@0
+          	dec	w
+          	brne	PC-2
+          	.endmacro
+         
+         ; --- logical operations with masks ---
+          .macro	MOVMSK	; reg1,reg2,mask	; reg1 <- reg2 (mask)
+          	ldi	w,~@2	
+          	and	@0,w
+          	ldi	w,@2
+          	and	@1,w	
+          	or	@0,@1
+          	.endmacro	
+          .macro	ANDMSK	; reg1,reg2,mask	; reg1 <- ret 1 AND reg2 (mask)		
+          	mov	w,@1
+          	ori	w,~@2
+          	and	@0,w
+          	.endmacro	
+          .macro	ORMSK	; reg1,reg2,mask	; reg1 <- ret 1 AND reg2 (mask)		
+          	mov	w,@1
+          	andi	w,@2
+          	or	@0,w
+          	.endmacro
+         	
+         ; --- logical operations on bits ---
+          .macro	ANDB	; r1,b1, r2,b2, r3,b3	; reg1,b1 <- reg2,b2 AND reg3,b3
+          	set
+          	sbrs	@4,@5	
+          	clt
+          	sbrs	@2,@3	
+          	clt
+          	bld	@0,@1
+          	.endmacro
+          .macro	ORB	; r1,b1, r2,b2, r3,b3	; reg1.b1 <- reg2.b2 OR reg3.b3
+          	clt
+          	sbrc	@4,@5	
+          	set
+          	sbrc	@2,@3	
+          	set
+          	bld	@0,@1
+          	.endmacro
+          .macro	EORB	; r1,b1, r2,b2, r3,b3	; reg1.b1 <- reg2.b2 XOR reg3.b3
+          	sbrc	@4,@5
+          	rjmp	f1
+          f0:	bst	@2,@3	
+          	rjmp	PC+4
+          f1:	set
+          	sbrc	@0,@1
+          	clt
+          	bld	@0,@1	
+          	.endmacro
+         	
+         ; --- operations based on register bits ---
+          .macro	B0	; reg,bit		; bit=0
+          	cbr	@0,1<<@1
+          	.endmacro
+          .macro	B1	; reg,bit		; bit=1
+          	sbr	@0,1<<@1
+          	.endmacro
+          .macro	_B0	; reg,bit		; bit=0
+          	ldi	w,~(1<<@1)
+          	and	@0,w
+          	.endmacro
+          .macro	_B1	; reg,bit		; bit=1
+          	ldi	w,1<<@1
+          	or	@0,w
+          	.endmacro
+          .macro	SB0	; reg,bit,addr		; skip if bit=0
+          	sbrc	@0,@1
+          	.endmacro
+          .macro	SB1	; reg,bit,addr		; skip if bit=1
+          	sbrs	@0,@1
+          	.endmacro
+          .macro	JB0	; reg,bit,addr		; jump if bit=0
+          	sbrs	@0,@1
+          	rjmp	@2
+          	.endmacro
+          .macro	JB1	; reg,bit,addr		; jump if bit=1
+          	sbrc	@0,@1
+          	rjmp	@2
+          	.endmacro
+          .macro	CB0	; reg,bit,addr		; call if bit=0
+          	sbrs	@0,@1
+          	rcall	@2
+          	.endmacro
+          .macro	CB1	; reg,bit,addr		; call if bit=1
+          	sbrc	@0,@1
+          	rcall	@2
+          	.endmacro
+          .macro	WB0	; reg,bit		; wait if bit=0
+          	sbrs	@0,@1
+          	rjmp	PC-1
+          	.endmacro
+          .macro	WB1	; reg,bit		; wait if bit=1
+          	sbrc	@0,@1
+          	rjmp	PC-1
+          	.endmacro
+          .macro	RB0	; reg,bit		; return if bit=0
+          	sbrs	@0,@1
+          	ret
+          	.endmacro
+          .macro	RB1	; reg,bit		; return if bit=1
+          	sbrc	@0,@1
+          	ret
+          	.endmacro
+         
+         ; wait if bit=0 with timeout
+         ; if timeout (in units of 5 cyc) then jump to addr
+          .macro	WB0T	; reg,bit,timeout,addr
+          	ldi	w,@2+1
+          	dec	w	; 1 cyc
+          	breq	@3	; 1 cyc
+          	sbrs	@0,@1	; 1 cyc
+          	rjmp	PC-3	; 2 cyc = 5 cycles
+          	.endmacro
+         
+         ; wait if bit=1 with timeout
+         ; if timeout (in units of 5 cyc) then jump to addr	
+          .macro	WB1T	; reg,bit,timeout,addr
+          	ldi	w,@2+1
+          	dec	w	; 1 cyc
+          	breq	@3	; 1 cyc
+          	sbrc	@0,@1	; 1 cyc
+          	rjmp	PC-3	; 2 cyc = 5 cycles
+          	.endmacro	
+         	
+         ; --- operations based on port bits ---
+          .macro	P0	; port,bit		; port=0
+          	cbi	@0,@1
+          	.endmacro
+          .macro	P1	; port,bit		; port=1
+          	sbi	@0,@1
+          	.endmacro
+          .macro	SP0	; port,bit		; skip if port=0
+          	sbic	@0,@1
+          	.endmacro
+          .macro	SP1	; port,bit		; skip if port=1
+          	sbis	@0,@1
+          	.endmacro
+          .macro	JP0	; port,bit,addr		; jump if port=0
+          	sbis	@0,@1
+          	rjmp	@2
+          	.endmacro
+          .macro	JP1	; port,bit,addr		; jump if port=1
+          	sbic	@0,@1
+          	rjmp	@2
+          	.endmacro
+          .macro	CP0	; port,bit,addr		; call if port=0
+          	sbis	@0,@1
+          	rcall	@2
+          	.endmacro
+          .macro	CP1	; port,bit,addr		; call if port=1
+          	sbic	@0,@1
+          	rcall	@2
+          	.endmacro
+          .macro	WP0	; port,bit		; wait if port=0
+          	sbis	@0,@1
+          	rjmp	PC-1
+          	.endmacro
+          .macro	WP1	; port,bit		; wait if port=1
+          	sbic	@0,@1
+          	rjmp	PC-1
+          	.endmacro
+          .macro	RP0	; port,bit		; return if port=0
+          	sbis	@0,@1
+          	ret
+          	.endmacro
+          .macro	RP1	; port,bit		; return if port=1
+          	sbic	@0,@1
+          	ret
+          	.endmacro
+         
+         ; wait if port=0 with timeout
+         ; if timeout (in units of 5 cyc) then jump to addr
+          .macro	WP0T	; port,bit,timeout,addr
+          	ldi	w,@2+1
+          	dec	w	; 1 cyc
+          	breq	@3	; 1 cyc
+          	sbis	@0,@1	; 1 cyc
+          	rjmp	PC-3	; 2 cyc = 5 cycles
+          	.endmacro
+         
+         ; wait if port=1 with timeout
+         ; if timeout (in units of 5 cyc) then jump to addr	
+          .macro	WP1T	; port,bit,timeout,addr
+          	ldi	w,@2+1
+          	dec	w	; 1 cyc
+          	breq	@3	; 1 cyc
+          	sbic	@0,@1	; 1 cyc
+          	rjmp	PC-3	; 2 cyc = 5 cycles
+          	.endmacro	
+         
+         ; ===========================
+         ; 	multi-byte operations
+         ; ===========================
+         
+          .macro	SWAP4			; swap 2 variables
+          	mov	w ,@0
+          	mov	@0,@4
+          	mov	@4,w
+          	mov	w ,@1
+          	mov	@1,@5
+          	mov	@5,w
+          	mov	w ,@2
+          	mov	@2,@6
+          	mov	@6,w
+          	mov	w ,@3
+          	mov	@3,@7
+          	mov	@7,w
+          	.endmacro
+          .macro	SWAP3
+          	mov	w ,@0
+          	mov	@0,@3
+          	mov	@3,w
+          	mov	w ,@1
+          	mov	@1,@4
+          	mov	@4,w
+          	mov	w ,@2
+          	mov	@2,@5
+          	mov	@5,w
+          	.endmacro
+          .macro	SWAP2
+          	mov	w ,@0
+          	mov	@0,@2
+          	mov	@2,w
+          	mov	w ,@1
+          	mov	@1,@3
+          	mov	@3,w
+          	.endmacro
+          .macro	SWAP1
+          	mov	w ,@0
+          	mov	@0,@1
+          	mov	@1,w
+          	.endmacro
+         
+          .macro	LDX4	;r..r0		; load from (x+)
+          	ld	@3,x+
+          	ld	@2,x+	
+          	ld	@1,x+
+          	ld	@0,x+
+          	.endmacro
+          .macro	LDX3	;r..r0
+          	ld	@2,x+	
+          	ld	@1,x+
+          	ld	@0,x+
+          	.endmacro
+          .macro	LDX2	;r..r0	
+          	ld	@1,x+
+          	ld	@0,x+
+          	.endmacro
+         	
+          .macro	LDY4	;r..r0		; load from (y+)
+          	ld	@3,y+
+          	ld	@2,y+	
+          	ld	@1,y+
+          	ld	@0,y+
+          	.endmacro
+          .macro	LDY3	;r..r0
+          	ld	@2,y+	
+          	ld	@1,y+
+          	ld	@0,y+
+          	.endmacro
+          .macro	LDY2	;r..r0	
+          	ld	@1,y+
+          	ld	@0,y+
+          	.endmacro
+         
+          .macro	LDZ4	;r..r0		; load from (z+)
+          	ld	@3,z+
+          	ld	@2,z+	
+          	ld	@1,z+
+          	ld	@0,z+
+          	.endmacro
+          .macro	LDZ3	;r..r0
+          	ld	@2,z+	
+          	ld	@1,z+
+          	ld	@0,z+
+          	.endmacro
+          .macro	LDZ2	;r..r0
+          	ld	@1,z+
+          	ld	@0,z+
+          	.endmacro
+         
+          .macro	STX4	;r..r0		; store to (x+)
+          	st	x+,@3
+          	st	x+,@2	
+          	st	x+,@1
+          	st	x+,@0
+          	.endmacro
+          .macro	STX3	;r..r0
+          	st	x+,@2	
+          	st	x+,@1
+          	st	x+,@0
+          	.endmacro
+          .macro	STX2	;r..r0
+          	st	x+,@1
+          	st	x+,@0
+          	.endmacro
+         	
+          .macro	STY4	;r..r0		; store to (y+)
+          	st	y+,@3
+          	st	y+,@2	
+          	st	y+,@1
+          	st	y+,@0
+          	.endmacro
+          .macro	STY3	;r..r0
+          	st	y+,@2	
+          	st	y+,@1
+          	st	y+,@0
+          	.endmacro
+          .macro	STY2	;r..r0	
+          	st	y+,@1
+          	st	y+,@0
+          	.endmacro
+         	
+          .macro	STZ4	;r..r0		; store to (z+)
+          	st	z+,@3
+          	st	z+,@2	
+          	st	z+,@1
+          	st	z+,@0
+          	.endmacro	
+          .macro	STZ3	;r..r0
+          	st	z+,@2	
+          	st	z+,@1
+          	st	z+,@0
+          	.endmacro	
+          .macro	STZ2	;r..r0	
+          	st	z+,@1
+          	st	z+,@0
+          	.endmacro	
+         	
+          .macro	STI4	;addr,k		; store immediate
+          	ldi	w,  low(@1)
+          	sts	@0+0,w
+          	ldi	w, high(@1)
+          	sts	@0+1,w
+          	ldi	w,byte3(@1)
+          	sts	@0+2,w
+          	ldi	w,byte4(@1)
+          	sts	@0+3,w	
+          	.endmacro	
+          .macro	STI3	;addr,k
+          	ldi	w,  low(@1)
+          	sts	@0+0,w
+          	ldi	w, high(@1)
+          	sts	@0+1,w
+          	ldi	w,byte3(@1)
+          	sts	@0+2,w
+          	.endmacro	
+          .macro	STI2	;addr,k
+          	ldi	w,  low(@1)
+          	sts	@0+0,w
+          	ldi	w, high(@1)
+          	sts	@0+1,w
+          	.endmacro
+          .macro	STI	;addr,k
+          	ldi	w,@1
+          	sts	@0,w
+          	.endmacro
+         
+          .macro	INC4			; increment
+          	ldi	w,0xff
+          	sub	@3,w
+          	sbc	@2,w
+          	sbc	@1,w
+          	sbc	@0,w
+          	.endmacro
+          .macro	INC3
+          	ldi	w,0xff
+          	sub	@2,w
+          	sbc	@1,w
+          	sbc	@0,w
+          	.endmacro
+          .macro	INC2
+          	ldi	w,0xff
+          	sub	@1,w
+          	sbc	@0,w
+          	.endmacro
+         
+          .macro	DEC4			; decrement
+          	ldi	w,0xff
+          	add	@3,w
+          	adc	@2,w
+          	adc	@1,w
+          	adc	@0,w
+          	.endmacro
+          .macro	DEC3
+          	ldi	w,0xff
+          	add	@2,w
+          	adc	@1,w
+          	adc	@0,w
+          	.endmacro
+          .macro	DEC2
+          	ldi	w,0xff
+          	add	@1,w
+          	adc	@0,w
+          	.endmacro
+         
+          .macro	CLR9			; clear (also clears the carry)
+          	sub	@0,@0
+          	clr	@1
+          	clr	@2
+          	clr	@3
+          	clr	@4
+          	clr	@5
+          	clr	@6
+          	clr	@7
+          	clr	@8
+          	.endmacro
+          .macro	CLR8
+          	sub	@0,@0
+          	clr	@1
+          	clr	@2
+          	clr	@3
+          	clr	@4
+          	clr	@5
+          	clr	@6
+          	clr	@7
+          	.endmacro
+          .macro	CLR7
+          	sub	@0,@0
+          	clr	@1
+          	clr	@2
+          	clr	@3
+          	clr	@4
+          	clr	@5
+          	clr	@6
+          	.endmacro
+          .macro	CLR6
+          	sub	@0,@0
+          	clr	@1
+          	clr	@2
+          	clr	@3
+          	clr	@4
+          	clr	@5
+          	.endmacro
+          .macro	CLR5
+          	sub	@0,@0
+          	clr	@1
+          	clr	@2
+          	clr	@3
+          	clr	@4
+          	.endmacro
+          .macro	CLR4
+          	sub	@0,@0
+          	clr	@1
+          	clr	@2
+          	clr	@3
+          	.endmacro
+          .macro	CLR3
+          	sub	@0,@0
+          	clr	@1
+          	clr	@2
+          	.endmacro
+          .macro	CLR2
+          	sub	@0,@0
+          	clr	@1
+          	.endmacro
+         
+          .macro	COM4			; one's complement
+          	com	@0
+          	com	@1
+          	com	@2
+          	com	@3
+          	.endmacro
+          .macro	COM3
+          	com	@0
+          	com	@1
+          	com	@2
+          	.endmacro
+          .macro	COM2
+          	com	@0
+          	com	@1
+          	.endmacro
+         
+          .macro	NEG4			; negation (two's complement)
+          	com	@0
+          	com	@1
+          	com	@2
+          	com	@3
+          	ldi	w,0xff
+          	sub	@3,w
+          	sbc	@2,w
+          	sbc	@1,w
+          	sbc	@0,w
+          	.endmacro
+          .macro	NEG3
+          	com	@0
+          	com	@1
+          	com	@2
+          	ldi	w,0xff
+          	sub	@2,w
+          	sbc	@1,w
+          	sbc	@0,w
+          	.endmacro
+          .macro	NEG2
+          	com	@0
+          	com	@1
+          	ldi	w,0xff
+          	sub	@1,w
+          	sbc	@0,w
+          	.endmacro
+         	
+          .macro	LDI4 	; r..r0, k	; load immediate
+          	ldi	@3,  low(@4)
+          	ldi	@2, high(@4)
+          	ldi	@1,byte3(@4)
+          	ldi	@0,byte4(@4)
+          	.endmacro
+          .macro	LDI3
+          	ldi	@2,  low(@3)
+          	ldi	@1, high(@3)
+          	ldi	@0,byte3(@3)
+          	.endmacro
+          .macro	LDI2
+          	ldi	@1,  low(@2)
+          	ldi	@0, high(@2)
+          	.endmacro
+         
+          .macro	LDS4			; load direct from SRAM
+          	lds	@3,@4
+          	lds	@2,@4+1
+          	lds	@1,@4+2
+          	lds	@0,@4+3
+          	.endmacro
+          .macro	LDS3
+          	lds	@2,@3
+          	lds	@1,@3+1
+          	lds	@0,@3+2
+          	.endmacro
+          .macro	LDS2
+          	lds	@1,@2
+          	lds	@0,@2+1
+          	.endmacro
+         
+          .macro	STS4			; store direct to SRAM
+          	sts	@0+0,@4
+          	sts	@0+1,@3
+          	sts	@0+2,@2
+          	sts	@0+3,@1
+          	.endmacro
+          .macro	STS3
+          	sts	@0+0,@3
+          	sts	@0+1,@2
+          	sts	@0+2,@1
+          	.endmacro
+          .macro	STS2
+          	sts	@0+0,@2
+          	sts	@0+1,@1
+          	.endmacro
+         
+          .macro	STDZ4	; d, r3,r2,r1,r0
+          	std	z+@0+0,@4
+          	std	z+@0+1,@3
+          	std	z+@0+2,@2
+          	std	z+@0+3,@1
+          	.endmacro
+          .macro	STDZ3	; d, r2,r1,r0
+          	std	z+@0+0,@3
+          	std	z+@0+1,@2
+          	std	z+@0+2,@1
+          	.endmacro
+          .macro	STDZ2	; d, r1,r0
+          	std	z+@0+0,@2
+          	std	z+@0+1,@1
+          	.endmacro
+         	
+          .macro	LPM4			; load program memory
+          	lpm
+          	mov	@3,r0
+          	adiw	zl,1
+          	lpm
+          	mov	@2,r0
+          	adiw	zl,1
+          	lpm
+          	mov	@1,r0
+          	adiw	zl,1
+          	lpm
+          	mov	@0,r0
+          	adiw	zl,1
+          	.endmacro
+          .macro	LPM3
+          	lpm
+          	mov	@2,r0
+          	adiw	zl,1
+          	lpm
+          	mov	@1,r0
+          	adiw	zl,1
+          	lpm
+          	mov	@0,r0
+          	adiw	zl,1
+          	.endmacro
+          .macro	LPM2
+          	lpm
+          	mov	@1,r0
+          	adiw	zl,1
+          	lpm
+          	mov	@0,r0
+          	adiw	zl,1
+          	.endmacro
+          .macro	LPM1
+          	lpm
+          	mov	@0,r0
+          	adiw	zl,1
+          	.endmacro
+         
+          .macro	MOV4			; move between registers
+          	mov	@3,@7
+          	mov	@2,@6
+          	mov	@1,@5
+          	mov	@0,@4
+          	.endmacro
+          .macro	MOV3
+          	mov	@2,@5
+          	mov	@1,@4
+          	mov	@0,@3
+          	.endmacro
+          .macro	MOV2
+          	mov	@1,@3
+          	mov	@0,@2
+          	.endmacro
+         
+          .macro	ADD4			; add
+          	add	@3,@7
+          	adc	@2,@6
+          	adc	@1,@5
+          	adc	@0,@4
+          	.endmacro
+          .macro	ADD3
+          	add	@2,@5
+          	adc	@1,@4
+          	adc	@0,@3
+          	.endmacro
+          .macro	ADD2
+          	add	@1,@3
+          	adc	@0,@2
+          	.endmacro
+         
+          .macro	SUB4			; subtract
+          	sub	@3,@7
+          	sbc	@2,@6
+          	sbc	@1,@5
+          	sbc	@0,@4
+          	.endmacro
+          .macro	SUB3
+          	sub	@2,@5
+          	sbc	@1,@4
+          	sbc	@0,@3
+          	.endmacro
+          .macro	SUB2
+          	sub	@1,@3
+          	sbc	@0,@2
+          	.endmacro
+         	
+          .macro	CP4			; compare
+          	cp	@3,@7
+          	cpc	@2,@6
+          	cpc	@1,@5
+          	cpc	@0,@4
+          	.endmacro
+          .macro	CP3
+          	cp	@2,@5
+          	cpc	@1,@4
+          	cpc	@0,@3
+          	.endmacro
+          .macro	CP2
+          	cp	@1,@3
+          	cpc	@0,@2
+          	.endmacro
+         
+          .macro	TST4			; test
+          	clr	w
+          	cp	@3,w
+          	cpc	@2,w
+          	cpc	@1,w
+          	cpc	@0,w
+          	.endmacro
+          .macro	TST3
+          	clr	w
+          	cp	@2,w
+          	cpc	@1,w
+          	cpc	@0,w
+          	.endmacro
+          .macro	TST2
+          	clr	w
+          	cp	@1,w
+          	cpc	@0,w
+          	.endmacro
+         
+          .macro	ADDI4			; add immediate
+          	subi	@3,  low(-@4)
+          	sbci	@2, high(-@4)
+          	sbci	@1,byte3(-@4)
+          	sbci	@0,byte4(-@4)
+          	.endmacro
+          .macro	ADDI3
+          	subi	@2,  low(-@3)
+          	sbci	@1, high(-@3)
+          	sbci	@0,byte3(-@3)
+          	.endmacro
+          .macro	ADDI2
+          	subi	@1,  low(-@2)
+          	sbci	@0, high(-@2)
+          	.endmacro
+         	
+          .macro	SUBI4			; subtract immediate
+          	subi	@3,  low(@4)
+          	sbci	@2, high(@4)
+          	sbci	@1,byte3(@4)
+          	sbci	@0,byte4(@4)
+          	.endmacro
+          .macro	SUBI3
+          	subi	@2,  low(@3)
+          	sbci	@1, high(@3)
+          	sbci	@0,byte3(@3)
+          	.endmacro
+          .macro	SUBI2
+          	subi	@1,  low(@2)
+          	sbci	@0, high(@2)
+          	.endmacro
+         
+          .macro	LSL5			; logical shift left
+          	lsl	@4
+          	rol	@3
+          	rol	@2
+          	rol	@1
+          	rol	@0
+          	.endmacro
+          .macro	LSL4
+          	lsl	@3
+          	rol	@2
+          	rol	@1
+          	rol	@0
+          	.endmacro
+          .macro	LSL3
+          	lsl	@2
+          	rol	@1
+          	rol	@0
+          	.endmacro
+          .macro	LSL2
+          	lsl	@1
+          	rol	@0
+          	.endmacro
+         	
+          .macro	LSR4			; logical shift right
+          	lsr	@0
+          	ror	@1
+          	ror	@2
+          	ror	@3
+          	.endmacro
+          .macro	LSR3
+          	lsr	@0
+          	ror	@1
+          	ror	@2
+          	.endmacro
+          .macro	LSR2
+          	lsr	@0
+          	ror	@1
+          	.endmacro
+         
+          .macro	ASR4			; arithmetic shift right
+          	asr	@0
+          	ror	@1
+          	ror	@2
+          	ror	@3
+          	.endmacro
+          .macro	ASR3
+          	asr	@0
+          	ror	@1
+          	ror	@2
+          	.endmacro
+          .macro	ASR2
+          	asr	@0
+          	ror	@1
+          	.endmacro
+         
+          .macro	ROL8			; rotate left through carry
+          	rol	@7
+          	rol	@6
+          	rol	@5
+          	rol	@4
+          	rol	@3
+          	rol	@2
+          	rol	@1
+          	rol	@0
+          	.endmacro
+          .macro	ROL7
+          	rol	@6
+          	rol	@5
+          	rol	@4
+          	rol	@3
+          	rol	@2
+          	rol	@1
+          	rol	@0
+          	.endmacro
+          .macro	ROL6
+          	rol	@5
+          	rol	@4
+          	rol	@3
+          	rol	@2
+          	rol	@1
+          	rol	@0
+          	.endmacro
+          .macro	ROL5
+          	rol	@4
+          	rol	@3
+          	rol	@2
+          	rol	@1
+          	rol	@0
+          	.endmacro
+          .macro	ROL4
+          	rol	@3
+          	rol	@2
+          	rol	@1
+          	rol	@0
+          	.endmacro
+          .macro	ROL3
+          	rol	@2
+          	rol	@1
+          	rol	@0
+          	.endmacro
+          .macro	ROL2
+          	rol	@1
+          	rol	@0
+          	.endmacro
+         
+          .macro	ROR8			; rotate right through carry
+          	ror	@0
+          	ror	@1
+          	ror	@2
+          	ror	@3
+          	ror	@4
+          	ror	@5
+          	ror	@6
+          	ror	@7
+          	.endmacro
+          .macro	ROR7
+          	ror	@0
+          	ror	@1
+          	ror	@2
+          	ror	@3
+          	ror	@4
+          	ror	@5
+          	ror	@6
+          	.endmacro
+          .macro	ROR6
+          	ror	@0
+          	ror	@1
+          	ror	@2
+          	ror	@3
+          	ror	@4
+          	ror	@5
+          	.endmacro
+          .macro	ROR5
+          	ror	@0
+          	ror	@1
+          	ror	@2
+          	ror	@3
+          	ror	@4
+          	.endmacro	
+          .macro	ROR4
+          	ror	@0
+          	ror	@1
+          	ror	@2
+          	ror	@3
+          	.endmacro
+          .macro	ROR3
+          	ror	@0
+          	ror	@1
+          	ror	@2
+          	.endmacro
+          .macro	ROR2
+          	ror	@0
+          	ror	@1
+          	.endmacro
+         
+          .macro	PUSH2
+          	push	@0
+          	push	@1
+          	.endmacro	
+          .macro	POP2
+          	pop	@1
+          	pop	@0
+          	.endmacro
+         
+          .macro	PUSH3
+          	push	@0
+          	push	@1
+          	push	@2
+          	.endmacro	
+          .macro	POP3
+          	pop	@2
+          	pop	@1
+          	pop	@0
+          	.endmacro
+         	
+          .macro	PUSH4
+          	push	@0
+          	push	@1
+          	push	@2
+          	push	@3
+          	.endmacro	
+          .macro	POP4
+          	pop	@3
+          	pop	@2
+          	pop	@1
+          	pop	@0
+          	.endmacro	
+         	
+          .macro	PUSH5
+          	pop	@0
+          	pop	@1
+          	pop	@2
+          	pop	@3
+          	pop	@4
+          	.endmacro	
+          .macro	POP5
+          	pop	@4
+          	pop	@3
+          	pop	@2
+          	pop	@1
+          	pop	@0
+          	.endmacro	
+         
+         ; --- SRAM operations ---
+          .macro	INCS4	; sram		; increment SRAM 4-byte variable
+          	lds	w,@0
+          	inc	w
+          	sts	@0,w
+          	brne	end
+          	lds	w,@0+1
+          	inc	w
+          	sts	@0+1,w
+          	brne	end
+          	lds	w,@0+2
+          	inc	w
+          	sts	@0+2,w
+          	brne	end
+          	lds	w,@0+3
+          	inc	w
+          	sts	@0+3,w
+          end:	.endmacro
+          .macro	INCS3	; sram		; increment SRAM 3-byte variable
+          	lds	w,@0
+          	inc	w
+          	sts	@0,w
+          	brne	end
+          	lds	w,@0+1
+          	inc	w
+          	sts	@0+1,w
+          	brne	end
+          	lds	w,@0+2
+          	inc	w
+          	sts	@0+2,w
+          end:	.endmacro
+          .macro	INCS2	; sram		; increment SRAM 2-byte variable
+          	lds	w,@0
+          	inc	w
+          	sts	@0,w
+          	brne	end
+          	lds	w,@0+1
+          	inc	w
+          	sts	@0+1,w
+          end:	.endmacro
+          .macro	INCS	; sram		; increment SRAM 1-byte variable
+          	lds	w,@0
+          	inc	w
+          	sts	@0,w
+          	.endmacro
+         
+          .macro	DECS4	; sram		; decrement SRAM 4-byte variable
+          	ldi	w,1
+          	lds	u,@0
+          	sub	u,w
+          	sts	@0,u
+          	clr	w
+          	lds	u,@0+1
+          	sbc	u,w
+          	sts	@0+1,u
+          	lds	u,@0+2
+          	sbc	u,w
+          	sts	@0+2,u
+          	lds	u,@0+3
+          	sbc	u,w
+          	sts	@0+3,u
+          	.endmacro
+          .macro	DECS3	; sram		; decrement SRAM 3-byte variable
+          	ldi	w,1
+          	lds	u,@0
+          	sub	u,w
+          	sts	@0,u
+          	clr	w
+          	lds	u,@0+1
+          	sbc	u,w
+          	sts	@0+1,u
+          	lds	u,@0+2
+          	sbc	u,w
+          	sts	@0+2,u
+          	.endmacro
+          .macro	DECS2	; sram		; decrement SRAM 2-byte variable
+          	ldi	w,1
+          	lds	u,@0
+          	sub	u,w
+          	sts	@0,u
+          	clr	w
+          	lds	u,@0+1
+          	sbc	u,w
+          	sts	@0+1,u
+          	.endmacro
+          .macro	DECS	; sram		; decrement
+          	lds	w,@0
+          	dec	w
+          	sts	@0,w
+          	.endmacro
+         
+          .macro	MOVS4	; addr0,addr1	; [addr0] <-- [addr1]
+          	lds	w,@1
+          	sts	@0,w
+          	lds	w,@1+1
+          	sts	@0+1,w
+          	lds	w,@1+2
+          	sts	@0+2,w
+          	lds	w,@3+1
+          	sts	@0+3,w	
+          	.endmacro
+          .macro	MOVS3	; addr0,addr1	; [addr0] <-- [addr1]
+          	lds	w,@1
+          	sts	@0,w
+          	lds	w,@1+1
+          	sts	@0+1,w
+          	lds	w,@1+2
+          	sts	@0+2,w
+          	.endmacro
+          .macro	MOVS2	; addr0,addr1	; [addr0] <-- [addr1]
+          	lds	w,@1
+          	sts	@0,w
+          	lds	w,@1+1
+          	sts	@0+1,w
+          	.endmacro
+          .macro	MOVS	; addr0,addr1	; [addr0] <-- [addr1]
+          	lds	w,@1
+          	sts	@0,w
+          	.endmacro
+         
+          .macro	SEXT	; reg1,reg0	; sign extend
+          	clr	@0
+          	sbrc	@1,7
+          	dec	@0
+          	.endmacro
+         
+         ; =======================================
+         ;	Jump/Call with constant arguments
+         ; =======================================
+         	
+         ; --- calls with arguments a,b,XYZ ---
+          .macro	CX	; subroutine,x
+          	ldi	xl, low(@1)
+          	ldi	xh,high(@1)
+          	rcall	@0
+          	.endmacro
+          .macro	CXY	; subroutine,x,y
+          	ldi	xl, low(@1)
+          	ldi	xh,high(@1)
+          	ldi	yl, low(@2)
+          	ldi	yh,high(@2)	
+          	rcall	@0
+          	.endmacro		
+          .macro	CXZ	; subroutine,x,z
+          	ldi	xl, low(@1)
+          	ldi	xh,high(@1)
+          	ldi	zl, low(@2)
+          	ldi	zh,high(@2)	
+          	rcall	@0
+          	.endmacro		
+          .macro	CXYZ	; subroutine,x,y,z
+          	ldi	xl, low(@1)
+          	ldi	xh,high(@1)
+          	ldi	yl, low(@2)
+          	ldi	yh,high(@2)
+          	ldi	zl, low(@3)
+          	ldi	zh,high(@3)		
+          	rcall	@0
+          	.endmacro
+          .macro	CW	; subroutine,w
+          	ldi	w, @1
+          	rcall	@0
+          	.endmacro
+          .macro	CA	; subroutine,a
+          	ldi	a0, @1
+          	rcall	@0
+          	.endmacro
+          .macro	CAB	; subroutine,a,b
+          	ldi	a0, @1
+          	ldi	b0, @2
+          	rcall	@0
+          	.endmacro
+         
+         ; --- jump with arguments w,a,b ---
+          .macro	JW	; subroutine,w
+          	ldi	w, @1
+          	rjmp	@0
+          	.endmacro
+          .macro	JA	; subroutine,a
+          	ldi	a0, @1
+          	rjmp	@0
+          	.endmacro
+          .macro	JAB	; subroutine,a,b
+          	ldi	a0, @1
+          	ldi	b0, @2
+          	rjmp	@0
+          	.endmacro
+          .list          .include "definitions.asm"
+         ; file:	definitions.asm
+         ; copyright (c) 2000-2002 R.Holzer
+         ; 2002-01-09
+         
+         ; === definitions  ===
+          .nolist			; do not include in listing
+         
+         ;=====================================================
+         ;CONSTANTES
+         ;=====================================================
+         	
+          .def	RegTempLow 	= 	r6
+          .def	RegTempHigh 	=	r7
+          .def	RegHumidityLow 	=	r26
+          .def	RegHumidityHigh =	r27
+          .def	CompteurRegistre=	r28
+          .def	erreur		= 	r29	
+         	
+          .equ	MesureTemp	=	0b00000011
+          .equ	MesureHum	=	0b00000101
+         
+         
+         ;=====================================================
+         ;INTERRUPTIONS
+         ;=====================================================
+          .org 0
+000000 940c 0574 	jmp reset
+          .org INT2addr
+000006 940c 0412 	jmp modification_valeurs
+         
+          .include "lcd.asm"
+         ; file	lcd.asm
+         ; copyright (c) 2000-2002 R.Holzer
+         ; 2002-01-19
+         
+         ; === definitions ===
+          .equ	LCD_IR	= 0x8000	; address LCD instruction reg
+          .equ	LCD_DR	= 0xc000	; address LCD data register
+         
+         ; === subroutines ===
+          LCD_wr_ir:
+         ; in	w (byte to write to LCD IR)
+000008 9030 8000 	lds	u, LCD_IR	; read IR to check busy flag  (bit7)
+00000a   +  	JB1	u,7,LCD_wr_ir	; Jump if Bit=1 (still busy)
+00000c d003      	rcall	lcd_4us		; delay to increment DRAM addr counter
+00000d 9300 8000 	sts	LCD_IR, w	; store w in IR
+00000f 9508      	ret
+         	
+          lcd_4us:
+000010 d000      	rcall	lcd_2us		; recursive call		
+          lcd_2us:
+000011 0000      	nop			; rcall(3) + nop(1) + ret(4) = 8 cycles (2us)
+000012 9508      	ret
+         
+          LCD:
+          LCD_putc:
+000013   +  	JK	a0,CR,LCD_cr	; Jump if a0=CR
+000015   +  	JK	a0,LF,LCD_lf	; Jump if a0=LF
+          LCD_wr_dr:
+         ; in	a0 (byte to write to LCD DR)
+000017 9100 8000 	lds	w, LCD_IR	; read IR to check busy flag  (bit7)
+000019   +  	JB1	w,7,LCD_wr_dr	; Jump if Bit=1 (still busy)
+00001b dff4      	rcall	lcd_4us		; delay to increment DRAM addr counter
+00001c 9320 c000 	sts	LCD_DR, a0	; store a0 in DR
+00001e 9508      	ret	
+         	
+00001f   +  LCD_clear:		JW	LCD_wr_ir, 0b00000001	; clear display
+000021   +  LCD_home:		JW	LCD_wr_ir, 0b00000010	; return home
+000023   +  LCD_cursor_left:	JW	LCD_wr_ir, 0b00010000	; move cursor to left
+000025   +  LCD_cursor_right:	JW	LCD_wr_ir, 0b00010100	; move cursor to right
+000027   +  LCD_display_left:	JW	LCD_wr_ir, 0b00011000	; shifts display to left
+000029   +  LCD_display_right:	JW	LCD_wr_ir, 0b00011100	; shifts display to right
+00002b   +  LCD_blink_on:		JW	LCD_wr_ir, 0b00001101	; Display=1,Cursor=0,Blink=1
+00002d   +  LCD_blink_off:		JW	LCD_wr_ir, 0b00001100	; Display=1,Cursor=0,Blink=0
+00002f   +  LCD_cursor_on:		JW	LCD_wr_ir, 0b00001110	; Display=1,Cursor=1,Blink=0
+000031   +  LCD_cursor_off:		JW	LCD_wr_ir, 0b00001100	; Display=1,Cursor=0,Blink=0
+         		
+          LCD_init:
+000033 b705      	in	w,MCUCR		; enable access to ext. SRAM
+000034 6c00      	sbr	w,(1<<SRE)+(1<<SRW)
+000035 bf05      	out	MCUCR,w
+000036   +  	CW	LCD_wr_ir, 0b00000001	; clear display
+000038   +  	CW	LCD_wr_ir, 0b00000110	; entry mode set (Inc=1, Shift=0)
+00003a   +  	CW	LCD_wr_ir, 0b00001100	; Display=1,Cursor=0,Blink=0	
+00003c   +  	CW	LCD_wr_ir, 0b00111000	; 8bits=1, 2lines=1, 5x8dots=0
+00003e 9508      	ret
+         
+          LCD_pos:
+         ; in	a0 = position (0x00..0x0f first line, 0x40..0x4f second line)
+00003f 2f02      	mov	w,a0
+000040 6800      	ori	w,0b10000000
+000041 cfc6      	rjmp	LCD_wr_ir
+         
+          LCD_cr:
+         ; moving the cursor to the beginning of the line (carriage return)
+000042 9100 8000 	lds	w, LCD_IR	; read IR to check busy flag  (bit7)
+000044   +  	JB1	w,7,LCD_cr	; Jump if Bit=1 (still busy)
+000046 7400      	andi	w,0b01000000	; keep bit6 (begin of line 1/2)
+000047 6800      	ori	w,0b10000000	; write address command
+000048 dfc7      	rcall	lcd_4us		; delay to increment DRAM addr counter
+000049 9300 8000 	sts	LCD_IR,w	; store in IR
+00004b 9508      	ret
+         
+          LCD_lf:
+         ; moving the cursor to the beginning of the line 2 (line feed)
+00004c 932f      	push	a0		; saveguard a0
+00004d e420      	ldi	a0,$40		; load position $40 (begin of line 2)
+00004e dff0      	rcall	LCD_pos		; set cursor position
+00004f 912f      	pop	a0		; restore a0
+000050 9508      	ret          .include "printf.asm"
+         ; file	printf.asm		formatted output
+         ; copyright (c) 2000-2002 R.Holzer
+         ; date	2001-06-25
+         
+         ; === description ===
+         ; 
+         ; The program "printf" interprets and prints formatted strings.
+         ; The special formatting characters regognized are:
+         ;
+         ; DEC	decimal number
+         ; HEX	hexadecimal number
+         ; BIN	binary number
+         ; FRAC	fixed fraction number
+         ; CHAR	single ASCII character
+         ; STR	zero-terminated ASCII string
+         	
+         ; The special formatting characters are distinguished from normal 
+         ; ASCII characters by having bit7 set to 1.
+         
+         ; Signification of bit fields:
+         ;
+         ; b 	bytes		1..4 b bytes		2
+         ; s 	sign		0(unsigned), 1(signed)	1
+         ; i	integer digits	
+         ; e 	base		2,,36			5
+         ; dp 	dec. point	0..32			5
+         ; $if		i=integer digits,  0=all digits,  1..15 digits 
+         ;		f=fraction digits, 0=no fraction, 1..15 digits
+         ;
+         ; Formatting characters must be followed by an SRAM address (0..ff)
+         ; BIN,	sram
+         ; HEX,	sram
+         ; DEC,	sram
+         ; CHAR,	sram
+         ; STR,	sram
+         ;
+         ; The address sram is a 1-byte constante. It addresses
+         ; 	 0..1f	registers r0..r31, 
+         ; 	20..3f	i/o ports, (need to be addressed with an offset of $20)
+         ;	60..ff	SRAM registers
+         
+         ; The FRAC formatting character must be followed by 
+         ;	ONE sram address and 
+         ;	TWO more formatting characters
+         ; FRAC,sram,dp,$if
+         
+         ; dp	decimal point position, 0=right, 32=left
+         ; $if	format i.f, i=integer digits, f=fraction digits
+         
+         ; The special formatting characters use the following coding
+         ;
+         ; DEC	11bb'iiis	i=0 all digits, i=1-7 digits
+         ; BIN	101i'iiis	i=0 8 digits,	i=1-7 digits
+         ; HEX	1001'iiis	i=0 8 digits,	i=1-7 digits
+         ; FRAC	1000'1bbs
+         ; CHAR	1000'0100
+         ; STR	1000'0101
+         ; REP	1000'0110
+         ; FUNC	1000'0111
+         ;	1000'0010
+         ;	1000'0011
+         ; ESC	1000'0000
+         
+         ; examples
+         ; formatting string		printing
+         ; "a=",DEC,a,0			1-byte variable a, unsigned decimal
+         ; "a=",DEC2,a,0			2-byte variable a (a1,a0), unsigend
+         ; "a=",DEC|SIGN,a,0		1-byte variable 1, signed decimal
+         ; "n=",BIN,PIND+$20,0		i/o port, binary, notice offset of $20
+         ; "f=",FRAC4|SIGN,a,16,$88,0	4-byte signed fixed-point fraction
+         ;				dec.point at 16, 8 int.digits, 8 frac.digits	
+         ; "f=",FRAC2,a,16,$18,0		2-byte unsigned fixed-point fraction
+         ;				dec.point at 16, 1 int.digits, 8 frac.digits	
+         ; "a=",DEC|DIG5|SIGN,a,0	1-byte variable, 5-digit, decimal, signed
+         ; "a=",DEC|DIG5,a,0		1-byte variable, 5-digit, decimal, unsigned
+         
+         ; === registers modified ===
+         ; e0,e1	used to transmit address of putc routine
+         ; zh,zl	used as pointer to prog-memory
+         
+         ; === constants ==============================================
+         
+          .equ	DEC	= 0b11000000	; 1-byte variable
+          .equ	DEC2	= 0b11010000	; 2-byte variable
+          .equ	DEC3	= 0b11100000	; 3-byte variable
+          .equ	DEC4	= 0b11110000	; 4-byte variable
+         
+          .equ	BIN	= 0b10100000
+          .equ	HEX	= 0b10010100	; 1-byte variable
+          .equ	HEX2	= 0b10011000	; 2-byte variable
+          .equ	HEX3	= 0b10011100	; 3-byte variable
+          .equ	HEX4	= 0b10010000	; 4-byte variable
+         
+          .equ	FRAC	= 0b10001000	; 1-byte variable
+          .equ	FRAC2	= 0b10001010	; 2-byte variable
+          .equ	FRAC3	= 0b10001100	; 3-byte variable
+          .equ	FRAC4	= 0b10001110	; 4-byte variable
+         
+          .equ	CHAR	= 0b10000100
+          .equ	STR	= 0b10000101
+         
+          .equ	SIGN	= 0b00000001
+         
+          .equ	DIG1	= 1<<1
+          .equ	DIG2	= 2<<1
+          .equ	DIG3	= 3<<1	
+          .equ	DIG4	= 4<<1
+          .equ	DIG5	= 5<<1
+          .equ	DIG6	= 6<<1
+          .equ	DIG7	= 7<<1
+         
+         ; ===macro ====================================================
+         
+          .macro	PRINTF			; putc function (UART, LCD...)
+          	ldi	w, low(@0)	; address of "putc" in e1:d0
+          	mov	e0,w
+          	ldi	w,high(@0)
+          	mov	e1,w
+          	rcall	_printf
+          	.endmacro
+         
+         ; mod	y,z
+         
+         
+         ; === routines ================================================
+         
+          _printf:
+000051   +  	POPZ			; z points to begin of "string"
+000053   +  	MUL2Z			; multiply Z by two, (word ptr -> byte ptr)
+000055   +  	PUSHX
+         		
+          _printf_read:
+000057 95c8      	lpm			; places prog_mem(Z) into r0 (=c)
+000058 9631      	adiw	zl,1		; increment pointer Z
+000059 2000      	tst	r0		; test for ZERO (=end of string)
+00005a f021      	breq	_printf_end	; char=0 indicates end of ascii string
+00005b f04a      	brmi	_printf_formatted ; bit7=1 indicates formatting character
+00005c 2d00      	mov	w,r0
+00005d d013      	rcall	_putw		; display the character
+00005e cff8      	rjmp	_printf_read	; read next character in the string
+         	
+          _printf_end:
+00005f 9631      	adiw	zl,1		; point to the next character
+000060   +  	DIV2Z			; divide by 2 (byte ptr -> word ptr)
+000062   +  	POPX
+000064 9409      	ijmp			; return to instruction after "string"
+         
+          _printf_formatted:
+         
+         ; DEC	11bb'iiis
+         ; BIN	101i'iiis
+         ; HEX	1001'iiis
+         ; FRAC	1000'1bbs
+         ; CHAR	1000'0100
+         ; STR	1000'0101
+         
+000065 fa00      	bst	r0,0		; store sign in T
+000066 2d00      	mov	w,r0		; store formatting character in w
+         
+000067 95c8      	lpm	
+000068 2da0      	mov	xl,r0		; load x-pointer with SRAM address
+000069 27bb      	clr	xh		; clear high-byte
+00006a 9631       	adiw	zl,1		; increment pointer Z
+         
+         ;	JB1	w,6,_putdec
+         ;	JB1	w,5,_putbin
+         ;	JB1	w,4,_puthex
+         ;	JB1	w,3,_putfrac
+00006b   +  	JK	w,CHAR,_putchar
+00006d   +  	JK	w,STR ,_putstr
+00006f c015      	rjmp	_putnum
+         	
+000070 cfe6      	rjmp	_printf_read	
+         
+         ; === putc (put character) ===============================
+         ; in	w	character to put
+         ;	e1,e0	address of output routine (UART, LCD putc)
+          _putw:
+000071   +  	PUSH3	a0,zh,zl
+000074   +  	MOV3	a0,zh,zl, w,e1,e0
+000077 9509      	icall			; indirect call to "putc"
+000078   +  	POP3	a0,zh,zl
+00007b 9508      	ret
+         
+         ; === putchar (put character) ============================
+         ; in	x	pointer to character to put
+          _putchar:
+00007c 910c      	ld	w,x
+00007d dff3      	rcall	_putw
+00007e cfd8      	rjmp	_printf_read
+         	
+         ; === putstr (put string) ================================
+         ; in	x	pointer to ascii string
+         ;	b3,b2	address of output routine (UART, LCD putc)
+          _putstr:
+00007f 910d      	ld	w,x+
+000080 2300      	tst	w
+000081 f409      	brne	PC+2
+000082 cfd4      	rjmp	_printf_read
+000083 dfed      	rcall	_putw
+000084 cffa      	rjmp	_putstr
+         
+         ; === putnum (dec/bin/hex/frac) ===========================
+         ; in	x	pointer to SRAM variable to print
+         ; 	r0	formatting character
+         	
+          _putnum:
+000085   +  	PUSH4	a3,a2,a1,a0	; saveguard a
+000089   +  	PUSH4	b3,b2,b1,b0	; saveguard b	
+00008d   +  	LDX4	a3,a2,a1,a0	; load operand to print into a
+         
+         ; DEC	11bb'iiis
+         ; BIN	101i'iiis
+         ; HEX	1001'iiis
+         ; FRAC	1000'1bbs
+         
+000091   +  	JB1	w,6,_putdec
+000093   +  	JB1	w,5,_putbin
+000095   +  	JB1	w,4,_puthex
+000097   +  	JB1	w,3,_putfrac
+         
+         ; DEC	11bb'iiis
+          _putdec:
+000099 e06a      	ldi	b0,10		; b0 = base (10)
+         
+00009a 2f70      	mov	b1,w
+00009b 9576      	lsr	b1
+00009c 7077      	andi	b1,0b111	
+00009d 9572      	swap	b1		; b1 = format 0iii'0000 (integer digits)
+00009e e080      	ldi	b2,0		; b2 = dec. point position = 0 (right)
+         	
+00009f 2f90      	mov	b3,w
+0000a0 9592      	swap	b3
+0000a1 7093      	andi	b3,0b11
+0000a2 9593      	inc	b3		; b3 = number of bytes (1..4)
+0000a3 c01a      	rjmp	_getnum		; get number of digits (iii)
+         
+         ; BIN	101i'iiis	addr
+          _putbin:	
+0000a4 e062      	ldi	b0,2		; b0 = base (2)
+0000a5 e094      	ldi	b3,4		; b3 = number of bytes (4)	
+0000a6 c003      	rjmp	_getdig		; get number of digits (iii)
+         
+         ; HEX	1001'iiis	addr
+          _puthex:	
+0000a7 e160      	ldi	b0,16		; b0 = base (16)
+0000a8 e094      	ldi	b3,4		; b3 = number of bytes (4)
+0000a9 c000      	rjmp	_getdig
+         
+          _getdig:
+0000aa 2f70      	mov	b1,w
+0000ab 9576      	lsr	b1
+0000ac 7077      	andi	b1,0b111
+0000ad f409      	brne	PC+2
+0000ae e078      	ldi	b1,8		; if b1=0 then 8-digits
+0000af 9572      	swap	b1		; b1 = format 0iii'0000 (integer digits)
+0000b0 e080      	ldi	b2, 0		; b2 = dec. point position = 0 (right)
+0000b1 c00c      	rjmp	_getnum
+         
+         ; FRAC	1000'1bbs	addr	 00dd'dddd, 	iiii'ffff
+         	
+          _putfrac:
+0000b2 e06a      	ldi	b0,10		; base=10	
+0000b3 95c8      	lpm
+0000b4 2d80      	mov	b2,r0		; load dec.point position
+0000b5 9631      	adiw	zl,1		; increment char pointer
+0000b6 95c8      	lpm
+0000b7 2d70      	mov	b1,r0		; load ii.ff format
+0000b8 9631      	adiw	zl,1		; increment char pointer
+         	
+0000b9 2f90      	mov	b3,w
+0000ba 9595      	asr	b3
+0000bb 7093      	andi	b3,0b11
+0000bc 9593      	inc	b3		; b3 = number of bytes (1..4)
+         
+0000bd c000      	rjmp	_getnum
+         
+          _getnum:
+         ; in 	a	4-byte variable
+         ; 	b3	number of bytes (1..4)
+         ;	T	sign, 0=unsigned, 1=signed
+         
+0000be   +  	JK	b3,4,_printf_4b
+0000c0   +  	JK	b3,3,_printf_3b
+0000c2   +  	JK	b3,2,_printf_2b	
+         	
+          _printf_1b:			; sign extension
+0000c4 2733      	clr	a1
+0000c5 f416      	brtc	PC+3		; T=1 sign extension
+0000c6 fd27      	sbrc	a0,7
+0000c7 ef3f      	ldi	a1,0xff
+          _printf_2b:
+0000c8 2744      	clr	a2
+0000c9 f416      	brtc	PC+3		; T=1 sign extension	
+0000ca fd37      	sbrc	a1,7
+0000cb ef4f      	ldi	a2,0xff
+          _printf_3b:	
+0000cc 2755      	clr	a3
+0000cd f416      	brtc	PC+3		; T=1 sign extension
+0000ce fd47      	sbrc	a2,7
+0000cf ef5f      	ldi	a3,0xff
+          _printf_4b:
+         
+0000d0 d009      	rcall	_ftoa		; float to ascii
+0000d1   +  	POP4	b3,b2,b1,b0	; restore b
+0000d5   +  	POP4	a3,a2,a1,a0	; restore a
+         	
+0000d9 cf7d      	rjmp	_printf_read
+         
+         ; ===============================================
+         ; func	ftoa
+         ; 
+         ; converts a fixed-point fractional number to an ascii string
+         ;
+         ; by	Raphael Holzer
+         ; date	16-6-2001
+         ;
+         ; in	a3-a0	variable to print
+         ;	b0	base, 2 to 36, but usually decimal (10)
+         ;	b1	number of digits to print ii.ff
+         ; 	b2	position of the decimal point (0=right, 32=left)
+         ;	T	sign (T=0 unsiged, T=1 signed)
+         
+          _ftoa:
+0000da 92cf      	push	d0
+0000db   +  	PUSH4	c3,c2,c1,c0	; c = fraction part, a = integer part
+0000df   +  	CLR4	c3,c2,c1,c0	; clear fraction part
+         
+0000e3 f486      	brtc	_ftoa_plus	; if T=0 then unsigned
+0000e4 94e8      	clt
+0000e5 2355      	tst	a3		; if MSb(a)=1 then a=-a
+0000e6 f46a      	brpl	_ftoa_plus
+0000e7 9468      	set			; T=1 (minus)
+0000e8 2377      	tst	b1
+0000e9 f009      	breq	PC+2		; if b1=0 the print ALL digits
+0000ea 5170      	subi	b1,0x10		; decrease int digits
+0000eb   +  	NEG4	a3,a2,a1,a0	; negate a
+          _ftoa_plus:	
+0000f4 2388      	tst	b2		; b0=0 (only integer part)
+0000f5 f051      	breq	_ftoa_int	
+          _ftoa_shift:	
+0000f6   +  	ASR4	a3,a2,a1,a0	; a = integer part	
+0000fa   +  	ROR4	c3,c2,c1,c0	; c = fraction part
+0000fe   +  	DJNZ	b2,_ftoa_shift
+          _ftoa_int:
+000100 937f      	push	b1		; ii.ff (ii=int digits)
+000101 9572      	swap	b1
+000102 707f      	andi	b1,0x0f
+         	
+000103 e20e      	ldi	w,'.'		; push decimal point
+000104 930f      	push	w
+          _ftoa_int1:
+000105 d045      	rcall	_div41		; int=int/10
+000106 2d0c      	mov	w,d0		; d=reminder
+000107 d030      	rcall	_hex2asc
+000108 930f      	push	w		; push rem(int/10)
+000109   +  	TST4	a3,a2,a1,a0	; (int/10)=?
+00010e f029      	breq	_ftoa_space	; (int/10)=0 then finished
+00010f 2377      	tst	b1
+000110 f3a1      	breq	_ftoa_int1	; if b1=0 then print ALL int-digits
+000111   +  	DJNZ	b1,_ftoa_int1
+000113 c007      	rjmp	_ftoa_sign
+          _ftoa_space:
+000114 2377      	tst	b1		; if b1=0 then print ALL int-digits
+000115 f029      	breq	_ftoa_sign
+000116 957a      	dec	b1
+000117 f019      	breq	_ftoa_sign
+000118 e200      	ldi	w,' '		; write spaces
+000119 df57      	rcall	_putw	
+00011a cff9      	rjmp	_ftoa_space
+          _ftoa_sign:
+00011b f416      	brtc	PC+3		; if T=1 then write 'minus'
+00011c e20d      	ldi	w,'-'
+00011d df53      	rcall	_putw
+          _ftoa_int3:
+00011e 910f      	pop	w
+00011f 320e      	cpi	w,'.'
+000120 f011      	breq	PC+3
+000121 df4f      	rcall	_putw
+000122 cffb      	rjmp	_ftoa_int3
+         
+000123 917f      	pop	b1		; ii.ff (ff=frac digits)
+000124 707f      	andi	b1,0x0f
+000125 2377      	tst	b1
+000126 f059      	breq	_ftoa_end
+          _ftoa_point:	
+000127 df49      	rcall	_putw		; write decimal point
+000128   +  	MOV4	a3,a2,a1,a0, c3,c2,c1,c0		
+          _ftoa_frac:
+00012c d011      	rcall	_mul41		; d.frac=10*frac
+00012d 2d0c      	mov	w,d0
+00012e d009      	rcall	_hex2asc
+00012f df41      	rcall	_putw
+000130   +  	DJNZ	b1,_ftoa_frac
+          _ftoa_end:
+000132   +  	POP4	c3,c2,c1,c0
+000136 90cf      	pop	d0
+000137 9508      	ret
+         
+         ; === hexadecimal to ascii ===
+         ; in	w
+          _hex2asc:
+000138 300a      	cpi	w,10
+000139 f410      	brsh	PC+3
+00013a   +  	addi	w,'0'
+00013b 9508      	ret
+00013c   +  	addi	w,('a'-10)
+00013d 9508      	ret
+         
+         ; === multiply 4byte*1byte ===
+         ;
+         ; by	Raphael Holzer, EPFL
+         ; date	16-6-2001
+         ; 
+         ; multiplies a3-a0 (4-byte) by b0 (1-byte)
+         ;
+         ; in	a3..a0	multiplicand (argument to multiply)
+         ;	b0	multiplier
+         ; out	a3..a0	result
+         ; 	d0	result MSB (byte 4)
+         ;
+00013e 24cc      _mul41:	clr	d0		; clear byte4 of result
+00013f e200      	ldi	w,32		; load bit counter
+000140 9488      __m41:	clc			; clear carry
+000141 fd20      	sbrc	a0,0		; skip addition if LSB=0
+000142 0ec6      	add	d0,b0		; add b to MSB of a
+000143   +  	ROR5	d0,a3,a2,a1,a0	; shift-right c, LSB (of b) into carry
+000148   +  	DJNZ	w,__m41		; Decrement and Jump if bit-count Not Zero
+00014a 9508      	ret
+         
+         ; === divide 4byte/1byte ===
+         ;
+         ; in	a0..a3 	divident (argument to divide)
+         ;	b0 	divider
+         ; out	a0..a3 	result 
+         ;	d0	reminder
+         ;
+00014b 24cc      _div41:	clr	d0		; d will contain the remainder
+00014c e200      	ldi	w,32		; load bit counter
+00014d   +  __d41:	ROL5	d0,a3,a2,a1,a0	; shift carry into result c
+000152 1ac6      	sub	d0, b0		; subtract b from remainder
+000153 f408      	brcc	PC+2	
+000154 0ec6      	add	d0, b0		; restore if remainder became negative
+000155   +  	DJNZ	w,__d41		; Decrement and Jump if bit-count Not Zero
+000157   +  	ROL4	a3,a2,a1,a0	; last shift (carry into result c)
+00015b   +  	COM4	a3,a2,a1,a0	; complement result
+00015f 9508      	ret          .include "math.asm"
+         ; file	math.asm	; math routines
+         ; copyright (c) 2000-2001 R.Holzer
+         
+         ; === unsigned multiplication (c=a*b) ===
+         
+000160 2499      mul11:	clr	c1			; clear upper half of result c
+000161 2e86      	mov	c0,b0			; place b in lower half of c
+000162 9486      	lsr	c0			; shift LSB (of b) into carry
+000163 e008      	ldi	w,8			; load bit counter
+000164 f408      _m11:	brcc	PC+2			; skip addition if carry=0
+000165 0e92      	add	c1,a0			; add a to upper half of c
+000166   +  	ROR2	c1,c0			; shift-right c, LSB (of b) into carry
+000168   +  	DJNZ	w,_m11			; Decrement and Jump if bit-count Not Zero
+00016a 9508      	ret
+         
+00016b   +  mul21:	CLR2	c2,c1			; clear upper half of result c
+00016d 2e86      	mov	c0,b0			; place b in lower half of c
+00016e 9486      	lsr	c0			; shift LSB (of b) into carry
+00016f e008      	ldi	w,8			; load bit counter
+000170 f410      _m21:	brcc	PC+3			; skip addition if carry=0
+000171   +  	ADD2	c2,c1, a1,a0		; add a to upper half of c
+000173   +  	ROR3	c2,c1,c0		; shift-right c, LSB (of b) into carry
+000176   +  	DJNZ	w,_m21			; Decrement and Jump if bit-count Not Zero
+000178 9508      	ret
+         
+000179   +  mul22:	CLR2	c3,c2			; clear upper half of result c
+00017b   +  	MOV2	c1,c0, b1,b0		; place b in lower half of c
+00017d   +  	LSR2	c1,c0			; shift LSB (of b) into carry
+00017f e100      	ldi	w,16			; load bit counter
+000180 f410      _m22:	brcc	PC+3			; skip addition if carry=0
+000181   +  	ADD2	c3,c2, a1,a0		; add a to upper half of c
+000183   +  	ROR4	c3,c2,c1,c0		; shift-right c, LSB (of b) into carry
+000187   +  	DJNZ	w,_m22			; Decrement and Jump if bit-count Not Zero
+000189 9508      	ret
+         
+00018a   +  mul31:	CLR3	c3,c2,c1		; clear upper half of result c
+00018d 2e86      	mov	c0,b0			; place b in lower half of c
+00018e 9486      	lsr	c0			; shift LSB (of b) into carry
+00018f e008      	ldi	w,8			; load bit counter
+000190 f418      _m31:	brcc	PC+4			; skip addition if carry=0
+000191   +  	ADD3	c3,c2,c1, a2,a1,a0	; add a to upper half of c
+000194   +  	ROR4	c3,c2,c1,c0		; shift-right c, LSB (of b) into carry
+000198   +  	DJNZ	w,_m31			; Decrement and Jump if bit-count Not Zero
+00019a 9508      	ret
+         
+00019b   +  mul32:	CLR3	d0,c3,c2		; clear upper half of result c
+00019e   +  	MOV2	c1,c0, b1,b0		; place b in lower half of c
+0001a0   +  	LSR2	c1,c0			; shift LSB (of b) into carry
+0001a2 e100      	ldi	w,16			; load bit counter
+0001a3 f418      _m32:	brcc	PC+4			; skip addition if carry=0
+0001a4   +  	ADD3	d0,c3,c2, a2,a1,a0	; add a to upper half of c
+0001a7   +  	ROR5	d0,c3,c2,c1,c0		; shift-right c, LSB (of b) into carry
+0001ac   +  	DJNZ	w,_m32			; Decrement and Jump if bit-count Not Zero
+0001ae 9508      	ret
+         	
+0001af   +  mul33:	CLR3	d1,d0,c3		; clear upper half of result c
+0001b2   +  	MOV3	c2,c1,c0, b2,b1,b0	; place b in lower half of c
+0001b5   +  	LSR3	c2,c1,c0		; shift LSB (of b) into carry
+0001b8 e108      	ldi	w,24			; load bit counter
+0001b9 f418      _m33:	brcc	PC+4			; skip addition if carry=0
+0001ba   +  	ADD3	d1,d0,c3, a2,a1,a0	; add a to upper half of c
+0001bd   +  	ROR6	d1,d0,c3,c2,c1,c0	; shift-right c, LSB (of b) into carry
+0001c3   +  	DJNZ	w,_m33			; Decrement and Jump if bit-count Not Zero
+0001c5 9508      	ret
+         
+0001c6   +  mul41:	CLR4	d0,c3,c2,c1		; clear upper half of result c
+0001ca 2e86      	mov	c0,b0			; place b in lower half of c
+0001cb 9486      	lsr	c0			; shift LSB (of b) into carry
+0001cc e008      	ldi	w,8			; load bit counter
+0001cd f420      _m41:	brcc	PC+5			; skip addition if carry=0
+0001ce   +  	ADD4	d0,c3,c2,c1, a3,a2,a1,a0; add a to upper half of c
+0001d2   +  	ROR5	d0,c3,c2,c1,c0		; shift-right c, LSB (of b) into carry
+0001d7   +  	DJNZ	w,_m41			; Decrement and Jump if bit-count Not Zero
+0001d9 9508      	ret
+         
+0001da   +  mul42:	CLR4	d1,d0,c3,c2		; clear upper half of result c
+0001de   +  	MOV2	c1,c0, b1,b0			; place b in lower half of c
+0001e0   +  	LSR2	c1,c0			; shift LSB (of b) into carry
+0001e2 e100      	ldi	w,16			; load bit counter
+0001e3 f420      _m42:	brcc	PC+5			; skip addition if carry=0
+0001e4   +  	ADD4	d1,d0,c3,c2, a3,a2,a1,a0; add a to upper half of c
+0001e8   +  	ROR6	d1,d0,c3,c2,c1,c0	; shift-right c, LSB (of b) into carry
+0001ee   +  	DJNZ	w,_m42			; Decrement and Jump if bit-count Not Zero
+0001f0 9508      	ret
+         
+0001f1   +  mul43:	CLR4	d2,d1,d0,c3		; clear upper half of result c
+0001f5   +  	MOV3	c2,c1,c0, b2,b1,b0	; place b in lower half of c
+0001f8   +  	LSR3	c2,c1,c0		; shift LSB (of b) into carry
+0001fb e108      	ldi	w,24			; load bit counter
+0001fc f420      _m43:	brcc	PC+5			; skip addition if carry=0
+0001fd   +  	ADD4	d2,d1,d0,c3, a3,a2,a1,a0; add a to upper half of c
+000201   +  	ROR7	d2,d1,d0,c3,c2,c1,c0	; shift-right c, LSB (of b) into carry
+000208   +  	DJNZ	w,_m43			; Decrement and Jump if bit-count Not Zero
+00020a 9508      	ret
+         
+00020b   +  mul44:	CLR4	d3,d2,d1,d0		; clear upper half of result c
+00020f   +  	MOV4	c3,c2,c1,c0, b3,b2,b1,b0; place b in lower half of c
+000213   +  	LSR4	c3,c2,c1,c0		; shift LSB (of b) into carry
+000217 e200      	ldi	w,32			; load bit counter
+000218 f420      _m44:	brcc	PC+5			; skip addition if carry=0
+000219   +  	ADD4	d3,d2,d1,d0, a3,a2,a1,a0; add a to upper half of c
+00021d   +  	ROR8	d3,d2,d1,d0,c3,c2,c1,c0	; shift-right c, LSB (of b) into carry
+000225   +  	DJNZ	w,_m44			; Decrement and Jump if bit-count Not Zero
+000227 9508      	ret
+         
+         ; === signed multiplication ===		
+000228 df37      mul11s: rcall	mul11
+000229 fd27      	sbrc	a0,7
+00022a 1a96      	sub	c1,b0
+00022b fd67      	sbrc	b0,7
+00022c 1a92      	sub	c1,a0
+00022d 9508      	ret
+         
+00022e df4a      mul22s: rcall	mul22
+00022f ff37      	sbrs	a1,7
+000230 c002      	rjmp	PC+3
+000231   +  	SUB2	c3,c2, b1,b0
+000233 ff77      	sbrs	b1,7
+000234 c002      	rjmp	PC+3	
+000235   +  	SUB2	c3,c2, a1,a0
+000237 9508      	ret
+         
+000238 df76      mul33s: rcall	mul33
+000239 ff47      	sbrs	a2,7
+00023a c003      	rjmp	PC+4
+00023b   +  	SUB3	d1,d0,c3, b2,b1,b0
+00023e ff87      	sbrs	b2,7
+00023f c003      	rjmp	PC+4
+000240   +  	SUB3	d1,d0,c3, a2,a1,a0
+000243 9508      	ret
+         
+000244 dfc6      mul44s: rcall	mul44
+000245 ff57      	sbrs	a3,7
+000246 c004      	rjmp	PC+5
+000247   +  	SUB4	d3,d2,d1,d0, b3,b2,b1,b0
+00024b ff97      	sbrs	b3,7
+00024c c004      	rjmp	PC+5
+00024d   +  	SUB4	d3,d2,d1,d0, a3,a2,a1,a0
+000251 9508      	ret
+         
+         ; === unsigned division c=a/b ===
+000252 2e82      div11:	mov	c0,a0			; c will contain the result
+000253 24cc      	clr	d0			; d will contain the remainder
+000254 e008      	ldi	w,8			; load bit counter
+000255   +  _d11:	ROL2	d0,c0			; shift carry into result c
+000257 1ac6      	sub	d0,b0			; subtract b from remainder
+000258 f408      	brcc	PC+2	
+000259 0ec6      	add	d0,b0			; restore if remainder became negative
+00025a   +  	DJNZ	w,_d11			; Decrement and Jump if bit-count Not Zero
+00025c 1c88      	rol	c0			; last shift (C into result c)
+00025d 9480      	com	c0			; complement result
+00025e 9508      	ret
+         
+00025f   +  div21:	MOV2	c1,c0, a1,a0		; c will contain the result
+000261 24cc      	clr	d0			; d will contain the remainder
+000262 e100      	ldi	w,16			; load bit counter
+000263   +  _d21:	ROL3	d0,c1,c0		; shift carry into result c
+000266 1ac6      	sub	d0,b0			; subtract b from remainder
+000267 f408      	brcc	PC+2		
+000268 0ec6      	add	d0,b0			; restore if remainder became negative
+000269   +  	DJNZ	w,_d21			; Decrement and Jump if bit-count Not Zero
+00026b   +  	ROL2	c1,c0			; last shift (carry into result c)
+00026d   +  	COM2	c1,c0			; complement result
+00026f 9508      	ret
+         
+000270   +  div22:	MOV2	c1,c0, a1,a0		; c will contain the result
+000272   +  	CLR2	d1,d0			; d will contain the remainder
+000274 e100      	ldi	w,16			; load bit counter
+000275   +  _d22:	ROL4	d1,d0,c1,c0		; shift carry into result c
+000279   +  	SUB2	d1,d0, b1,b0		; subtract b from remainder
+00027b f410      	brcc	PC+3	
+00027c   +  	ADD2	d1,d0, b1,b0		; restore if remainder became negative
+00027e   +  	DJNZ	w,_d22			; Decrement and Jump if bit-count Not Zero
+000280   +  	ROL2	c1,c0			; last shift (carry into result c)
+000282   +  	COM2	c1,c0			; complement result
+000284 9508      	ret
+         
+000285   +  div31:	MOV3	c2,c1,c0, a2,a1,a0	; c will contain the result
+000288 24cc      	clr	d0			; d will contain the remainder
+000289 e108      	ldi	w,24			; load bit counter
+00028a   +  _d31:	ROL4	d0,c2,c1,c0		; shift carry into result c
+00028e 1ac6      	sub	d0, b0			; subtract b from remainder
+00028f f408      	brcc	PC+2	
+000290 0ec6      	add	d0, b0			; restore if remainder became negative
+000291   +  	DJNZ	w,_d31			; Decrement and Jump if bit-count Not Zero
+000293   +  	ROL3	c2,c1,c0		; last shift (carry into result c)
+000296   +  	COM3	c2,c1,c0		; complement result
+000299 9508      	ret
+         
+00029a   +  div32:	MOV3	c2,c1,c0, a2,a1,a0	; c will contain the result
+00029d   +  	CLR2	d1,d0			; d will contain the remainder
+00029f e108      	ldi	w,24			; load bit counter
+0002a0   +  _d32:	ROL5	d1,d0,c2,c1,c0		; shift carry into result c
+0002a5   +  	SUB2	d1,d0, b1,b0		; subtract b from remainder
+0002a7 f410      	brcc	PC+3	
+0002a8   +  	ADD2	d1,d0, b1,b0		; restore if remainder became negative
+0002aa   +  	DJNZ	w,_d32			; Decrement and Jump if bit-count Not Zero
+0002ac   +  	ROL3	c2,c1,c0		; last shift (carry into result c)
+0002af   +  	COM3	c2,c1,c0		; complement result
+0002b2 9508      	ret
+         	
+0002b3   +  div33:	MOV3	c2,c1,c0, a2,a1,a0	; c will contain the result
+0002b6   +  	CLR3	d2,d1,d0		; d will contain the remainder
+0002b9 e108      	ldi	w,24			; load bit counter
+0002ba   +  _d33:	ROL6	d2,d1,d0,c2,c1,c0	; shift carry into result c
+0002c0   +  	SUB3	d2,d1,d0, b2,b1,b0	; subtract b from remainder
+0002c3 f418      	brcc	PC+4	
+0002c4   +  	ADD3	d2,d1,d0, b2,b1,b0	; restore if remainder became negative
+0002c7   +  	DJNZ	w,_d33			; Decrement and Jump if bit-count Not Zero
+0002c9   +  	ROL3	c2,c1,c0		; last shift (carry into result c)
+0002cc   +  	COM3	c2,c1,c0		; complement result
+0002cf 9508      	ret
+         
+0002d0   +  div41:	MOV4	c3,c2,c1,c0, a3,a2,a1,a0; c will contain the result
+0002d4 24cc      	clr	d0			; d will contain the remainder
+0002d5 e200      	ldi	w,32			; load bit counter
+0002d6   +  _d41:	ROL5	d0,c3,c2,c1,c0		; shift carry into result c
+0002db 1ac6      	sub	d0, b0			; subtract b from remainder
+0002dc f408      	brcc	PC+2	
+0002dd 0ec6      	add	d0, b0			; restore if remainder became negative
+0002de   +  	DJNZ	w,_d41			; Decrement and Jump if bit-count Not Zero
+0002e0   +  	ROL4	c3,c2,c1,c0		; last shift (carry into result c)
+0002e4   +  	COM4	c3,c2,c1,c0		; complement result
+0002e8 9508      	ret
+         
+0002e9   +  div42:	MOV4	c3,c2,c1,c0, a3,a2,a1,a0; c will contain the result
+0002ed   +  	CLR2	d1,d0			; d will contain the remainder
+0002ef e200      	ldi	w,32			; load bit counter
+0002f0   +  _d42:	ROL6	d1,d0,c3,c2,c1,c0	; shift carry into result c
+0002f6   +  	SUB2	d1,d0, b1,b0		; subtract b from remainder
+0002f8 f410      	brcc	PC+3	
+0002f9   +  	ADD2	d1,d0, b1,b0		; restore if remainder became negative
+0002fb   +  	DJNZ	w,_d42			; Decrement and Jump if bit-count Not Zero
+0002fd   +  	ROL4	c3,c2,c1,c0		; last shift (carry into result c)
+000301   +  	COM4	c3,c2,c1,c0		; complement result
+000305 9508      	ret
+         
+000306   +  div43:	MOV4	c3,c2,c1,c0, a3,a2,a1,a0; c will contain the result
+00030a   +  	CLR3	d2,d1,d0		; d will contain the remainder
+00030d e200      	ldi	w,32			; load bit counter
+00030e   +  _d43:	ROL7	d2,d1,d0,c3,c2,c1,c0	; shift carry into result c
+000315   +  	SUB3	d2,d1,d0, b2,b1,b0	; subtract b from remainder
+000318 f418      	brcc	PC+4	
+000319   +  	ADD3	d2,d1,d0, b2,b1,b0	; restore if remainder became negative
+00031c   +  	DJNZ	w,_d43			; Decrement and Jump if bit-count Not Zero
+00031e   +  	ROL4	c3,c2,c1,c0		; last shift (carry into result c)
+000322   +  	COM4	c3,c2,c1,c0		; complement result
+000326 9508      	ret
+         
+000327   +  div44:	MOV4	c3,c2,c1,c0, a3,a2,a1,a0; c will contain the result
+00032b   +  	CLR4	d3,d2,d1,d0		; d will contain the remainder
+00032f e200      	ldi	w,32			; load bit counter
+000330   +  _d44:	ROL8	d3,d2,d1,d0,c3,c2,c1,c0	; shift carry into result c
+000338   +  	SUB4	d3,d2,d1,d0, b3,b2,b1,b0; subtract b from remainder
+00033c f420      	brcc	PC+5	
+00033d   +  	ADD4	d3,d2,d1,d0, b3,b2,b1,b0; restore if remainder became negative
+000341   +  	DJNZ	w,_d44			; Decrement and Jump if bit-count Not Zero
+000343   +  	ROL4	c3,c2,c1,c0		; last shift (carry into result c)
+000347   +  	COM4	c3,c2,c1,c0		; complement result
+00034b 9508      	ret
+         
+         ; === signed division ===
+00034c 923f      div33s:	push	u
+00034d 2e34      	mov	u,a2
+00034e 2638      	eor	u,b2
+00034f ff47      	sbrs	a2,7
+000350 c007      	rjmp	d33a
+000351   +  	NEG3	a2,a1,a0
+000358 ff87      d33a:	sbrs	b2,7
+000359 c007      	rjmp	d33b
+00035a   +  	NEG3	b2,b1,b0
+000361 df51      d33b:	rcall	div33
+000362 fe37      	sbrs	u,7
+000363 c007      	rjmp	d33c
+000364   +  	NEG3	c2,c1,c0
+00036b 9508      d33c:	ret
+          .include "communication.asm"
+         ; file	i2cx.asm		: extended I2C (400kHz)
+         ; copyright (c) 2001-2002 R.Holzer
+         
+         ; === definitions ===
+          .equ	SDA_port= PORTE
+          .equ	SDA_pin	= 3
+          .equ	SCL_port= PORTE
+          .equ	SCL_pin	= 5
+         
+         ; === macros ===
+         ; these macros control DDRx to simulate an open collector
+         ; with external pull-up resistors
+         
+          .macro	SCL0
+          	sbi	SCL_port-1,SCL_pin 	; pull SCL low (output, port=0)
+          	.endmacro
+          .macro	SCL1
+          	cbi	SCL_port-1,SCL_pin 	; release SCL (input, hi Z)
+          	.endmacro
+          .macro	SDA0
+          	sbi	SDA_port-1,SDA_pin 	; pull SDA low (output, port=0)
+          	.endmacro
+          .macro	SDA1
+          	cbi	SDA_port-1,SDA_pin 	; release SDA (input, hi Z)
+          	.endmacro
+         
+          .macro	WIRE2_BIT_OUT	;bit
+          	sbi	SCL_port-1,SCL_pin 	; pull SCL low (output, port=0)
+          	in	w,SDA_port-1		; sample the SDA line
+          	bst	a0,@0			; store a0(bit) to T
+          	bld	w,SDA_pin		; load w(SDA) with T
+          	out	SDA_port-1,w		; transfer bit_x to SDA
+          	cbi	SCL_port-1,SCL_pin 	; release SCL (input, hi Z)
+          	rjmp	PC+1			; wait 2 cyles
+          	.endmacro
+         
+          .macro	WIRE2_BIT_IN	;bit
+          	sbi	SCL_port-1,SCL_pin 	; DDRx=output	SCL=0
+          	cbi	SDA_port-1,SDA_pin 	; release SDA (input, hi Z)	
+          	cbi	SCL_port-1,SCL_pin 	; DDRx=input	SCL=1
+          	nop				; wait 1 cycle
+          	in	w,SDA_port-2		; PINx=PORTx-2
+          	bst	w,SDA_pin		; store bit read in T
+          	bld	a0,@0			; load a0(bit) from T
+          	.endmacro
+         
+         ; === routines ===
+          wire2_init:
+00036c 981b      	cbi	SDA_port,  SDA_pin	; PORTx=0 (for pull-down)
+00036d 981d      	cbi	SCL_port,  SCL_pin	; PORTx=0 (for pull-down)
+00036e   +  	SDA1			; release SDA
+00036f   +  	SCL0			
+000370 9508      	ret
+         
+          wire2_rep_start:
+         ; in: 	a0 (byte to transmit)
+000371   +  	SCL0
+000372   +  	SDA1
+000373   +  	SCL1
+         	
+          wire2_start:
+         ; in: 	a0 (byte to transmit)
+         
+         ;        _____          _____
+         ;  DATA       \________/
+         ;
+         ;           ____     ____
+         ;   SCL  __/    \___/    \___
+         ;
+         ;
+         
+000374   +  	SDA1
+000375   +  	SCL0
+000376 0000      	nop
+         	
+000377   +  	SDA1
+000378   +  	SCL1
+000379 0000      	nop
+         
+00037a   +  	SDA0
+00037b 0000      	nop
+         
+         		; pour laisser un temps d'attente
+00037c   +  	SCL0	
+00037d 0000      	nop
+         			; idem
+00037e   +  	SCL1
+00037f 0000      	nop
+         
+000380   +  	SDA1
+000381 0000      	nop
+         	
+000382   +  	SCL0	
+         
+          wire2_write:
+000383 9520      	com	a0		; invert a0
+000384   +  	WIRE2_BIT_OUT 7
+00038b   +  	WIRE2_BIT_OUT 6
+000392   +  	WIRE2_BIT_OUT 5
+000399   +  	WIRE2_BIT_OUT 4
+0003a0   +  	WIRE2_BIT_OUT 3
+0003a7   +  	WIRE2_BIT_OUT 2
+0003ae   +  	WIRE2_BIT_OUT 1
+0003b5   +  	WIRE2_BIT_OUT 0
+0003bc 9520      	com	a0		; restore a0
+         	
+          wire2_ack_in:
+         
+0003bd   +  	SCL0
+0003be   +  	SDA1
+0003bf 0000      	nop			; release SDA
+0003c0   +  	SCL1
+0003c1 b101      	in	w,SDA_port-2	; PINx=PORTx-2
+0003c2 fb03      	bst	w,SDA_pin	; store ACK into T
+0003c3   +  	SCL0
+0003c4   +  	SDA1
+0003c5 9508      	ret
+         
+         
+          wire2_read:
+         ; out: 	a0 (byte read)
+0003c6   +  	WIRE2_BIT_IN 7
+0003cd   +  	WIRE2_BIT_IN 6
+0003d4   +  	WIRE2_BIT_IN 5
+0003db   +  	WIRE2_BIT_IN 4
+0003e2   +  	WIRE2_BIT_IN 3
+0003e9   +  	WIRE2_BIT_IN 2
+0003f0   +  	WIRE2_BIT_IN 1
+0003f7   +  	WIRE2_BIT_IN 0
+0003fe 9508      	ret
+         	
+          wire2_ack:
+         ;        ____        		Acknowledge écrit sur la Ligne DATA par le microcontroleur 
+         ;  DATA      \______	
+         ;
+         ;        ___   ___
+         ;   SCL     \_/   \_
+         ;
+0003ff   +  	SDA1
+000400   +  	SCL0
+000401   +  	SDA0
+000402   +  	SCL1
+000403 0000      	nop
+000404   +  	SCL0
+000405   +  	SDA1
+000406 9508      	ret
+         
+         	
+          wire2_no_ack:
+         ;             _______  		pas de Acknowledge.
+         ;  DATA  ____/	
+         ;
+         ;        ___   ___
+         ;   SCL     \_/   \_
+         	
+000407   +  	SCL0
+000408   +  	SDA1
+000409   +  	SCL1
+00040a 0000      	nop
+00040b   +  	SCL0
+00040c 9508      	ret
+         
+         
+          wire2_stop:
+00040d   +  	SCL0
+00040e   +  	SDA0
+00040f   +  	SCL1
+000410   +  	SDA1			; release again
+000411 9508      	ret          .include "menu_modifier_valeurs_ref.asm"
+         ;==faire_mesure=======================================
+         ;cette sous routine etabli le protocol pour communiquer avec le capteur et avoir en retour temp et hum
+         ;in:	PORTE
+         ;out:	a1,a0
+         ;mod:	PORTE
+         ;=====================================================
+         
+          modification_valeurs:
+000412 30c4      	cpi	CompteurRegistre,0x04		;
+000413 f011      	breq	PC+3			;si le compteur est deja à 4, on a fini de modifier les valeurs et on revient au main
+000414 95c3      	inc	CompteurRegistre	;sinon on incremente le registre pour modifier la valeur suivante
+000415 c003      	rjmp	modif_RegTempLow	;on regarde si le compteur pointe sur RegTempLow
+         	
+000416 27cc      	clr	CompteurRegistre	
+000417 dc07      	rcall	LCD_clear 
+000418 9518      	reti	
+         	
+          modif_RegTempLow:	;VERIFICATION VALEUR DU COMPTEUR DE REGISTRES
+         	
+000419 30c1      	cpi	CompteurRegistre,changer_RegTempLow	 ;changer la temp de reference haute
+00041a f549      	brne	modif_RegTempHigh 			;verifier la valeur suivante
+00041b   +  	WAIT_MS	200
+         
+         	;AFFICHAGE
+00042e 2d26      	mov	a0,RegTempLow
+00042f dbef      	rcall	LCD_clear
+000430   +  	PRINTF	LCD_putc	
+          	.db	"TempLow =",FRAC,a,1,$22,"C",0
+000435 6554
+000436 706d
+000437 6f4c
+000438 2077
+000439 883d
+00043a 0112
+00043b 4322
+00043c 0000
+         
+         	;ETATS DES BOUTONS
+00043d d086      	rcall	etats_bouton
+00043e 2e62      	mov	RegTempLow,a0
+         	;condition pour appuyer sur enter
+00043f 3003      	cpi	r16,0b00000011
+000440 f409      	brne	PC+2
+000441 940c 0412 	jmp	modification_valeurs
+         	
+000443 cfd5      	rjmp	modif_RegTempLow
+         			
+          modif_RegTempHigh:	;VERIFICATION VALEUR DU COMPTEUR DE REGISTRES
+         	
+000444 30c2      	cpi	CompteurRegistre,changer_RegTempHigh 	;changer la temp de reference haute
+000445 f549      	brne	modif_RegHumidityLow			;verifier la valeur suivante		
+000446   +  	WAIT_MS	200
+         
+         
+         	;AFFICHAGE
+000459 2d27      	mov	a0,RegTempHigh	
+00045a dbc4      	rcall	LCD_clear
+00045b   +  	PRINTF	LCD_putc
+          	.db	"TempHigh=",FRAC,a,1,$22,"C",0
+000460 6554
+000461 706d
+000462 6948
+000463 6867
+000464 883d
+000465 0112
+000466 4322
+000467 0000
+         
+         	;ETATS DES BOUTONS
+000468 d05b      	rcall	etats_bouton
+000469 2e72      	mov	RegTempHigh,a0
+         	;condition pour appuyer sur enter
+00046a 3003      	cpi	r16,0b00000011
+00046b f409      	brne	PC+2;a modifer
+00046c 940c 0412 	jmp	modification_valeurs
+         		
+00046e cfd5      	rjmp	modif_RegTempHigh
+         	
+          modif_RegHumidityLow:		;VERIFICATION VALEUR DU COMPTEUR DE REGISTRES
+         	
+00046f 30c3      	cpi	CompteurRegistre,changer_RegHumidityLow 	;changer l'humidite de reference basse
+000470 f541      	brne	modif_RegHumidityHigh				;verifier la valeur suivante
+000471   +  	WAIT_MS	200
+         	
+         	;AFFICHAGE	
+000484 2f2a      	mov	a0,RegHumidityLow
+000485 db99      	rcall	LCD_clear
+000486   +  	PRINTF	LCD_putc
+          	.db	"HumLow=",FRAC,a,1,$22,"%",0
+00048b 7548
+00048c 4c6d
+00048d 776f
+00048e 883d
+00048f 0112
+000490 2522
+000491 0000
+         
+         	;ETATS DES BOUTONS
+000492 d031      	rcall	etats_bouton
+000493 2fa2      	mov	RegHumidityLow,a0
+         	;condition pour appuyer sur enter
+000494 3003      	cpi	r16,0b00000011
+000495 f409      	brne	PC+2;a modifer
+000496 940c 0412 	jmp	modification_valeurs
+         		
+000498 cfd6      	rjmp	modif_RegHumidityLow
+         ;-----------------------------------------------------------------
+         
+          modif_RegHumidityHigh:	;VERIFICATION VALEUR DU COMPTEUR DE REGISTRES
+         	
+000499 30c4      	cpi	CompteurRegistre,changer_RegHumidityHigh ;changer l'humidite de reference haute
+00049a f449      	brne	PC+10 					;aller a modification valeur 	
+00049b   +  	WAIT_MS	200
+         	
+         	;AFFICHAGE
+0004ae 2f2b      	mov	a0,RegHumidityHigh
+0004af db6f      	rcall	LCD_clear
+0004b0   +  	PRINTF	LCD_putc
+          	.db	"HumHigh= ",FRAC,a,1,$22,"%",0	
+0004b5 7548
+0004b6 486d
+0004b7 6769
+0004b8 3d68
+0004b9 8820
+0004ba 0112
+0004bb 2522
+0004bc 0000
+         
+         	;ETATS DES BOUTONS
+0004bd d006      	rcall	etats_bouton
+0004be 2fb2      	mov	RegHumidityHigh,a0
+         	;condition pour appuyer sur enter
+0004bf 3003      	cpi	r16,0b00000011
+0004c0 f409      	brne	PC+2;a modifer
+0004c1 940c 0412 	jmp	modification_valeurs
+         		
+0004c3 cfd5      	rjmp	modif_RegHumidityHigh
+         
+          etats_bouton:
+         	;on regarde l'etat des boutons
+0004c4 b300      	in	r16,PIND
+0004c5 700b      	andi	r16,0b00001011
+         	;condition pour incrementer le registre en cours
+0004c6 3009      	cpi	r16,0b00001001
+0004c7 f409      	brne	PC+2;a modifer
+0004c8 9523      	inc	a0
+         	;condition pour decrementer le registre en cours
+0004c9 300a      	cpi	r16,0b00001010
+0004ca f409      	brne	PC+2;a modifer
+0004cb 952a      	dec	a0
+         	
+0004cc 9508      	ret
+          .include "conversions_mesures.asm"
+         ;=======================================
+         ;converti la temperature donnée par le module
+         ;in:	a1,a0
+         ;out:	c0,d0	
+         ;mod:	b0,c1,SREG
+         ;=======================================
+         
+0004cd e664      convertir_degres:	ldi	b0, 100		; on divise par 100
+0004ce dd90       			rcall	div21		; on appelle une sous-rôutine de math.asm
+0004cf   +  			_SUBI	c0, 40		; on soustrait 40 [C]
+0004d1 2499      			clr	c1		; on s'assure que c1 soit tjrs nul
+0004d2 2766      			clr	b0
+0004d3 9508      			ret
+         	
+         ;=======================================
+         ;converti l'himidité donnée par le module
+         ;in:	a1,a0
+         ;out:	c0,d0	
+         ;mod:	b0,c1,SREG
+         ;=======================================
+         	
+0004d4 e16f      convertir_humidite:	ldi	b0,31
+0004d5 dd89      			rcall	div21
+0004d6 2499      			clr	c1
+0004d7 9508      			ret          .include "comparaison_valeurs_ref.asm"
+          .equ	changer_RegTempLow 	= 0x01
+          .equ	changer_RegTempHigh 	= 0x02
+          .equ	changer_RegHumidityLow 	= 0x03
+          .equ	changer_RegHumidityHigh = 0x04
+         
+          .equ	HumOK			= 0x00	
+          .equ	HumBad			= 0x01
+          .equ	TempOK			= 0x02
+          .equ	TempBad			= 0x03
+         
+         ;==comparaison_valeur_ref_inf============================
+         ;Compare la valeur mesurée avec notre référence inférieur
+         ;in:	PORTE
+         ;out:	a1,a0
+         ;mod:	PORTE
+         ;========================================================
+         
+          comparaison_valeur_ref_inf:	
+0004d8 ef0e      	ldi	w,0xfe		;on crée un masque permettant d'obtenir uniquement les 7 premiers bits
+0004d9 2302      	and	w, a0		;on compare a0 (partie entiere le ref) avec le masque
+0004da 9506      	lsr	w		;on decale les bit vers la droite
+0004db 1680      	cp	c0,w		;on compare la partie entiere de la mesure avec la partie entire de reference
+0004dc f068      	brlo	PC+14		;si la mesure est trop basse : on alume les leds
+0004dd 1680      	cp	c0,w		;on re-compare		
+0004de f469      	brne	PC+14		;si la mesure est superieure a la ref_inf, on verifie la ref_sup
+0004df e001      	ldi	w, 0x01		;a ce niveau les parties decimales sont egales: on va comparer les parties frac
+0004e0 2302      	and	w, a0	
+0004e1 928f      	push	c0	
+0004e2 2f20      	mov	a0,w
+0004e3 e362      	ldi	b0,0x32		;on met la valeur 50 dans b0 pour faire la partie fractionnaire (car on a un seul bit pour la partie frac.)
+0004e4 dc7b      	rcall	mul11		;on effectue la multiplication par 50
+0004e5 2d08      	mov	w,c0		
+0004e6 908f      	pop	c0
+0004e7 16c0      	cp	d0,w		;on compare les parties frac
+0004e8 f008      	brlo	PC+2		;Température trop basse, on alume les leds
+0004e9 c002      	rjmp	PC+3		;sinon, on compare la valeur de ref sup
+0004ea e0d1      	ldi	erreur,0x01 	;en dessous de la valeur inf
+0004eb c001      	rjmp	PC+2
+0004ec e0d0      	ldi	erreur,0x00	;au dessus de la valeur inf : on verifie la valeur sup
+0004ed 9508      	ret
+         
+         ;==comparaison_valeur_ref_sup============================
+         ;Compare la valeur mesurée avec notre référence supérieur
+         ;in:	PORTE
+         ;out:	a1,a0
+         ;mod:	PORTE
+         ;========================================================
+         
+          comparaison_valeur_ref_sup:
+         
+0004ee ef0e      	ldi	w,0xfe	;on crée un masque permettant d'obtenir uniquement les 7 premiers bits
+0004ef 2303      	and	w, a1	;on compare a (partie fractionnaire de la mesure) avec le masque
+0004f0 9506      	lsr	w	;on decale les bits
+0004f1 1508      	cp	w,c0	;on compare la partie entiere de la mesure avec 
+0004f2 f068      	brlo	PC+14		;la mesure est trop haute : on alume les led
+0004f3 1508      	cp	w,c0			;on re-compare
+0004f4 f469      	brne	PC+14		;on eteint les led		
+0004f5 e001      	ldi	w, 0x01		;les parties decimales sont egales, on compare les parties frac
+0004f6 2303      	and	w, a1
+0004f7 928f      	push	c0	
+0004f8 2f20      	mov	a0,w
+0004f9 e362      	ldi	b0,0x32
+0004fa dc65      	rcall	mul11
+0004fb 2d08      	mov	w,c0
+0004fc 908f      	pop	c0
+0004fd 150c      	cp	w,d0	;on compare les parties frac
+0004fe f008      	brlo	PC+2	;on alume les led
+0004ff c002      	rjmp	PC+3	;on eteint les led
+000500 e0d2      	ldi	erreur,0x02	;on alume les led
+000501 c001      	rjmp	PC+2
+000502 e0d0      	ldi	erreur,0x00	;on eteint
+000503 9508      	ret
+         	          .include "affichage_et_led.asm"
+         ;==affichage_temperature==============================
+         ;Permet l'affichage de la température
+         ;in:	erreur, c,d
+         ;out:	LCD,PORTB
+         ;mod:	-
+         ;=====================================================
+         
+          affichage_temperature:
+         
+000504 db1c      	rcall	LCD_home		
+          cas_ok_t:
+000505 30d0      	cpi	erreur,0x00		
+000506 f481      	brne	cas_inf_t		;affichage de la temperature	
+000507   +  	PRINTF	LCD_putc
+          	.db	"T=",DEC, c, ".",DEC+DIG2, d, "C "," OK    ", 0 ;juste
+00050c 3d54
+00050d 08c0
+00050e c42e
+00050f 430c
+000510 2020
+000511 4b4f
+000512 2020
+000513 2020
+000514 0000
+000515   +  	OUTI	PORTB,0xff
+          cas_inf_t:
+000517 30d1      	cpi	erreur,0x01
+000518 f481      	brne	cas_sup_t		;affichage de la temperature	
+000519   +  	PRINTF	LCD_putc
+          	.db	"T=",DEC, c, ".",DEC+DIG2, d, "C "," INF    ", 0 ;juste
+00051e 3d54
+00051f 08c0
+000520 c42e
+000521 430c
+000522 2020
+000523 4e49
+000524 2046
+000525 2020
+000526 0020
+000527   +  	OUTI	PORTB,0x00		
+          cas_sup_t:
+000529 30d2      	cpi	erreur,0x02
+00052a f481      	brne	continue_t			;affichage de la temperature	
+00052b   +  	PRINTF	LCD_putc
+          	.db	"T=",DEC, c, ".",DEC+DIG2, d, "C "," SUP    " ,0 ;juste
+000530 3d54
+000531 08c0
+000532 c42e
+000533 430c
+000534 2020
+000535 5553
+000536 2050
+000537 2020
+000538 0020
+000539   +  	OUTI	PORTB,0x00
+          continue_t:
+00053b 9508      	ret
+         	
+         
+         ;==affichage_humidité==============================
+         ;Permet l'affichage de l'humidité
+         ;in:	erreur, c,d
+         ;out:	LCD,PORTB
+         ;mod:	-
+         ;=====================================================
+         	
+          affichage_humidite:
+         	
+00053c e420      	ldi	a0,0x40		;affichage de l'humidité sur la deuxieme ligne		
+00053d db01      	rcall	LCD_pos	
+          cas_ok_h:	
+00053e 30d0      	cpi	erreur,0x00	;On vérifie si on est OK
+00053f f479      	brne	cas_inf_h		
+000540   +  	PRINTF	LCD_putc
+          	.db	"H=",DEC, c, ".",DEC+DIG2, d, "% "," OK   ", 0
+000545 3d48
+000546 08c0
+000547 c42e
+000548 250c
+000549 2020
+00054a 4b4f
+00054b 2020
+00054c 0020
+00054d   +  	OUTI	PORTB,0xff
+          cas_inf_h:
+00054f 30d1      	cpi	erreur,0x01	;On vérifie si on est OK
+000550 f481        	brne	cas_sup_h	
+000551   +  	PRINTF	LCD_putc
+          	.db	"H=",DEC, c, ".",DEC+DIG2, d, "% "," INF    ", 0
+000556 3d48
+000557 08c0
+000558 c42e
+000559 250c
+00055a 2020
+00055b 4e49
+00055c 2046
+00055d 2020
+00055e 0020
+00055f   +  	OUTI	PORTB,0x00	
+          cas_sup_h:
+000561 30d2      	cpi	erreur,0x02	;om verifie si Mesure>temp_ref_sup
+000562 f481      	brne	continue_h	
+000563   +  	PRINTF	LCD_putc
+          	.db	"H=",DEC, c, ".",DEC+DIG2, d, "% "," SUP    " ,0
+000568 3d48
+000569 08c0
+00056a c42e
+00056b 250c
+00056c 2020
+00056d 5553
+00056e 2050
+00056f 2020
+000570 0020
+000571   +  	OUTI	PORTB,0x00
+          continue_h:
+000573 9508      	ret
+         	
+         	
+         
+         ;=====================================================
+         ;RESET
+         ;=====================================================
+         
+          reset:
+000574   +  	LDSP RAMEND
+000578 daba      	rcall 	LCD_init
+000579 daa5      	rcall	LCD_clear
+00057a daa6      	rcall	LCD_home			;affichage de la temperature	
+00057b   +  	PRINTF	LCD_putc
+          	.db	"INITIALISATION",0 ;juste	
+000580 4e49
+000581 5449
+000582 4149
+000583 494c
+000584 4153
+000585 4954
+000586 4e4f
+000587 0000
+000588 dde3      	rcall	wire2_init
+         	
+000589   +  	_LDI	RegTempLow,0b00110011		;on initialise les valeurs de references
+00058b   +  	_LDI	RegTempHigh,0b00111111
+00058d e3a3      	ldi	RegHumidityLow,0b00110011
+00058e e7bf      	ldi	RegHumidityHigh,0b01111111	
+00058f e0c0      	ldi	CompteurRegistre,0x00		;variable qui definit quelle valeur de reference il faut modifier
+         		
+000590   +  	OUTI	EIMSK,0b00000100		;on autorise des interuption seulement sur le bouton set (PIN2)
+         	
+000592 ef0f      	ldi	r16,0xFF			; configure portB as output
+000593 bb07      	out	DDRB,r16
+000594   +  	OUTI	PORTB,0xff
+         	
+000596 e000      	ldi	r16,0x00			; configure portD as input
+000597 bb01      	out	DDRD,r16
+000598 e0c0      	ldi	r28,0x00
+000599 9478      	sei
+         	
+00059a   +  	WAIT_MS	2000
+0005ad c000      	rjmp	main
+         	
+         ;=====================================================
+         ;MAIN
+         ;=====================================================	
+          main:	
+         	;PARTIE TEMPERATURE
+0005ae e023      	ldi	a0,MesureTemp 			;indique au module qu'il faut mesurer la temperature
+0005af d026      	rcall	faire_mesure		
+0005b0 df1c      	rcall 	convertir_degres
+         
+0005b1 2d26      	mov	a0,RegTempLow			;on charge les registres de comparaison de la temperature
+0005b2 2d37      	mov	a1,RegTempHigh
+         
+0005b3 df24      	rcall	comparaison_valeur_ref_inf
+0005b4 30d1      	cpi	erreur,0x01
+0005b5 f009      	breq	PC+2		
+0005b6 df37      	rcall	comparaison_valeur_ref_sup	
+0005b7 df4c      	rcall	affichage_temperature;rcall affichage +led
+         		
+         	;PARTIE HUMIDITE
+0005b8 e025      	ldi	a0,MesureHum			;indique au module qu'il faut mesurer l'humidité
+0005b9 d01c      	rcall	faire_mesure
+0005ba df19      	rcall	convertir_humidite
+         
+0005bb 2f2a      	mov	a0,RegHumidityLow		;on charge les registres de comparaison pour l'humidité
+0005bc 2f3b      	mov	a1,RegHumidityHigh
+         	
+0005bd df1a      	rcall	comparaison_valeur_ref_inf
+0005be 30d1      	cpi	erreur,0x01
+0005bf f009      	breq	PC+2		
+0005c0 df2d      	rcall	comparaison_valeur_ref_sup
+0005c1 df7a      	rcall	affichage_humidite
+         	
+0005c2   +  	WAIT_MS	1000
+         
+0005d5 cfd8      	rjmp	main
+         	
+         ;=====================================================
+         ;SOUS-ROUTINE : FAIRE LES MESURES
+         ;=====================================================
+         
+         ;==faire_mesure=======================================
+         ;etablit le protocol pour communiquer avec le capteur et avoir en retour temp et hum
+         ;in:	PORTE
+         ;out:	a1,a0
+         ;mod:	PORTE
+         ;=====================================================
+          faire_mesure :	
+0005d6 dd9d      	rcall	wire2_start
+0005d7   +  	WAIT_MS	250
+0005ea dddb      	rcall	wire2_read
+0005eb 2f32      	mov	a1,a0	;MSB
+0005ec 2722      	clr	a0
+0005ed de11      	rcall	wire2_ack	
+0005ee ddd7      	rcall	wire2_read
+0005ef de17      	rcall	wire2_no_ack
+         			
+0005f0 9508      	ret
+         	
+         	
+
+Assembly complete with no errors.
